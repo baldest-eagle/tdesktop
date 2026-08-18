@@ -8,6 +8,7 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "calls/group/calls_group_floating_overlay.h"
 
 #include "calls/group/calls_group_panel.h"
+#include "calls/group/calls_group_messages_ui.h"
 #include "ui/widgets/labels.h"
 #include "ui/widgets/buttons.h"
 #include "styles/style_calls.h"
@@ -25,7 +26,6 @@ FloatingOverlay::FloatingOverlay(not_null<Panel*> panel)
 , _panel(panel) {
 setAttribute(Qt::WA_TranslucentBackground);
 setAttribute(Qt::WA_ShowWithoutActivating);
-setAttribute(Qt::WA_TransparentForMouseEvents, _passthrough);
 
 // Set initial geometry
 const auto screen = QApplication::primaryScreen()->availableGeometry();

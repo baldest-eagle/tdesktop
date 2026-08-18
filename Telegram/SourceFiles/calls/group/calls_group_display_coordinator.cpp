@@ -48,6 +48,9 @@ DisplayCoordinator::DisplayCoordinator(
 	QObject::connect(app, &QGuiApplication::screenRemoved, [this](QScreen *screen) {
 		updateScreens();
 	});
+
+	// Detect existing screens on startup
+	updateScreens();
 }
 
 DisplayCoordinator::~DisplayCoordinator() = default;
