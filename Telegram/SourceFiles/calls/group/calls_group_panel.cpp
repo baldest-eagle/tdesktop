@@ -558,6 +558,27 @@ void Panel::toggleChatPanel() {
 		_chatPanelClose->show();
 		_chatPanelClose->setClickedCallback([=] { toggleChatPanel(); });
 		_chatPanelClose->move(4, 4);
+
+		// Create messages UI parented to the chat panel
+		if (!_panelMessages) {
+			_panelMessages = std::make_unique<MessagesUi>(
+				_chatPanel,
+				uiShow(),
+				MessagesMode::GroupCall,
+				_call->messages()->listValue(),
+				nullptr,
+				_call->messages()->idUpdates(),
+				_call->canManageValue(),
+				_call->messagesEnabledValue(),
+				[=](QPoint globalPosition) { return false; });
+		}
+		if (_panelMessages) {
+			_panelMessages->move(
+				4,
+				36,
+				_chatPanel->width() - 8,
+				_chatPanel->height() - 40);
+		}
 	}
 	if (_chatPanel) {
 		if (shown) {
@@ -567,7 +588,7 @@ void Panel::toggleChatPanel() {
 				widget()->width() - width - 8,
 				16,
 				width,
-				height);
+			height);
 			_chatPanel->raise();
 		} else {
 			_chatPanel->hide();
