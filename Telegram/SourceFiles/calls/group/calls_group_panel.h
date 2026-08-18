@@ -11,6 +11,7 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "calls/group/calls_group_call.h"
 #include "calls/group/calls_group_common.h"
 #include "calls/group/calls_group_display_coordinator.h"
+#include "calls/group/calls_group_floating_overlay.h"
 #include "calls/group/calls_choose_join_as.h"
 #include "calls/group/ui/desktop_capture_choose_source.h"
 #include "ui/effects/animations.h"
@@ -263,6 +264,7 @@ private:
 	object_ptr<Ui::IconButton> _chatPanelClose = { nullptr };
 	rpl::variable<bool> _chatPanelShown = false;
 	std::unique_ptr<DisplayCoordinator> _displayCoordinator;
+	std::unique_ptr<FloatingOverlay> _floatingOverlay;
 	std::unique_ptr<Ui::CallMuteButton> _mute;
 	object_ptr<Ui::CallButton> _hangup;
 	object_ptr<Ui::ImportantTooltip> _niceTooltip = { nullptr };

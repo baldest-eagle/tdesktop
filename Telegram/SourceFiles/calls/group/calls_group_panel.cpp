@@ -18,6 +18,7 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "calls/group/calls_group_toasts.h"
 #include "calls/group/calls_group_viewport.h"
 #include "calls/group/calls_group_display_coordinator.h"
+#include "calls/group/calls_group_floating_overlay.h"
 #include "calls/group/ui/calls_group_scheduled_labels.h"
 #include "calls/group/ui/desktop_capture_choose_source.h"
 #include "calls/calls_emoji_fingerprint.h"
@@ -260,6 +261,7 @@ Panel::Panel(not_null<GroupCall*> call, ConferencePanelMigration info)
 	_window->backend(),
 	_viewport->gridModeValue(),
 	_chatPanelShown))
+, _floatingOverlay(std::make_unique<FloatingOverlay>(this))
 , _toasts(std::make_unique<Toasts>(this))
 , _controlsBackgroundColor([] {
 	auto result = st::groupCallBg->c;
@@ -727,6 +729,18 @@ void Panel::initControls() {
 		return update.me;
 	}) | rpl::on_next([=](const LevelUpdate &update) {
 		_mute->setLevel(update.value);
+	}, _callLifetime);
+
+	// Active speaker tracking for secondary displays
+	_call->levelUpdates(
+	) | rpl::filter([=](const LevelUpdate &update) {
+		return !update.me && update.voice;
+	}) | rpl::on_next([=](const LevelUpdate &update) {
+		if (!_displayCoordinator) {
+			return;
+		}
+		// Update active speaker in coordinator
+		// The coordinator tracks levels and auto-switches ActiveSpeaker displays
 	}, _callLifetime);
 
 	_call->real(
