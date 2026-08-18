@@ -21,6 +21,7 @@ class IconButton;
 namespace Calls::Group {
 
 class Panel;
+class MessagesUi;
 
 class FloatingOverlay final : public QWidget {
 public:
@@ -39,11 +40,13 @@ protected:
 	void mouseMoveEvent(QMouseEvent *event) override;
 	void mouseReleaseEvent(QMouseEvent *event) override;
 	void paintEvent(QPaintEvent *event) override;
+	void resizeEvent(QResizeEvent *event) override;
 
 private:
 	void setupUI();
 	void updateGeometry();
 	void togglePassthrough();
+	void setupChatContent();
 
 	not_null<Panel*> _panel;
 	bool _dragging = false;
@@ -56,6 +59,9 @@ private:
 
 	// Shortcut
 	QShortcut *_toggleShortcut = nullptr;
+
+	// Chat content
+	std::unique_ptr<MessagesUi> _messagesUi;
 
 };
 

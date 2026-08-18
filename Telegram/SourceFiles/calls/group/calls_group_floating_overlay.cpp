@@ -106,21 +106,42 @@ p.drawRect(rect().adjusted(0, 0, -1, -1));
 QWidget::paintEvent(event);
 }
 
+void FloatingOverlay::resizeEvent(QResizeEvent *event) {
+QWidget::resizeEvent(event);
+if (_messagesUi) {
+_messagesUi->move(4, 36, width() - 8, height() - 40);
+}
+}
+
 void FloatingOverlay::setupUI() {
-// Title bar
-auto *title = new Ui::FlatLabel(this, st::groupCallBox);
-title->setText("Chat");
-title->move(10, 10);
+	// Title bar
+	auto *title = new Ui::FlatLabel(this, st::groupCallBox);
+	title->setText("Chat");
+	title->move(10, 10);
 
-// Close button
-auto *closeBtn = new Ui::IconButton(this, st::groupCallMenuToggleSmall);
-closeBtn->move(width() - 30, 5);
-connect(closeBtn, &Ui::IconButton::clicked, this, [this] { hide(); });
+	// Close button
+	auto *closeBtn = new Ui::IconButton(this, st::groupCallMenuToggleSmall);
+	closeBtn->move(width() - 30, 5);
+	connect(closeBtn, &Ui::IconButton::clicked, this, [this] { hide(); });
 
-// Passthrough toggle
-auto *passthroughBtn = new Ui::IconButton(this, st::groupCallMenuToggleSmall);
-passthroughBtn->move(width() - 55, 5);
-connect(passthroughBtn, &Ui::IconButton::clicked, this, [this] { togglePassthrough(); });
+	// Passthrough toggle
+	auto *passthroughBtn = new Ui::IconButton(this, st::groupCallMenuToggleSmall);
+	passthroughBtn->move(width() - 55, 5);
+	connect(passthroughBtn, &Ui::IconButton::clicked, this, [this] { togglePassthrough(); });
+
+	// Setup chat content
+	setupChatContent();
+}
+
+void FloatingOverlay::setupChatContent() {
+	// Note: MessagesUi requires a proper parent with session/show
+	// This is a placeholder - full implementation needs access to
+	// the Panel's uiShow() and _call->messages() data
+	if (!_panel) {
+		return;
+	}
+	// Get messages data from panel
+	// _messagesUi = std::make_unique<MessagesUi>(...);
 }
 
 void FloatingOverlay::updateGeometry() {
