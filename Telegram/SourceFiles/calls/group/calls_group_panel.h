@@ -172,6 +172,7 @@ private:
 	[[nodiscard]] bool videoButtonInNarrowMode() const;
 	[[nodiscard]] Fn<void()> shareConferenceLinkCallback();
 	void toggleMessageTyping();
+	void toggleChatPanel();
 	[[nodiscard]] rpl::producer<Ui::CallButtonColors> toggleableOverrides(
 		rpl::producer<bool> active);
 
@@ -253,6 +254,12 @@ private:
 	object_ptr<Ui::CallButton> _video = { nullptr };
 	object_ptr<Ui::CallButton> _screenShare = { nullptr };
 	object_ptr<Ui::CallButton> _message = { nullptr };
+	object_ptr<Ui::CallButton> _gridModeButton = { nullptr };
+	object_ptr<Ui::CallButton> _chatToggle = { nullptr };
+	object_ptr<Ui::RpWidget> _chatPanel = { nullptr };
+	std::unique_ptr<MessagesUi> _panelMessages;
+	object_ptr<Ui::IconButton> _chatPanelClose = { nullptr };
+	rpl::variable<bool> _chatPanelShown = false;
 	std::unique_ptr<Ui::CallMuteButton> _mute;
 	object_ptr<Ui::CallButton> _hangup;
 	object_ptr<Ui::ImportantTooltip> _niceTooltip = { nullptr };

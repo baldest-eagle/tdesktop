@@ -240,7 +240,7 @@ Panel::Panel(not_null<GroupCall*> call, ConferencePanelMigration info)
 	}))
 , _hangup(widget(), st::groupCallHangup)
 , _stickedTooltipsShown(Core::App().settings().hiddenGroupCallTooltips()
-	& ~StickedTooltip::Microphone) // Always show tooltip about mic.
+	| StickedTooltip::Microphone)  // Permanent listen-only: suppress mic tooltip
 , _messages(std::make_unique<MessagesUi>(
 	widget(),
 	uiShow(),
@@ -536,6 +536,45 @@ void Panel::toggleMessageTyping() {
 	updateWideControlsVisibility();
 }
 
+void Panel::toggleChatPanel() {
+	const auto shown = !_chatPanelShown.current();
+	_chatPanelShown = shown;
+	if (shown && !_chatPanel) {
+		_chatPanel.create(widget());
+		_chatPanel->show();
+		_chatPanel->setAttribute(Qt::WA_TranslucentBackground);
+		auto &lifetime = _chatPanel->lifetime();
+		const auto corners = lifetime.make_state<Ui::RoundRect>(
+			st::groupCallControlsBackRadius,
+			_controlsBackgroundColor.color());
+		_chatPanel->paintRequest(
+		) | rpl::on_next([=] {
+			auto p = QPainter(_chatPanel.data());
+			p.setOpacity(0.9);
+			corners->paint(p, _chatPanel->rect());
+		}, lifetime);
+
+		_chatPanelClose.create(_chatPanel, st::groupCallMenuToggleSmall);
+		_chatPanelClose->show();
+		_chatPanelClose->setClickedCallback([=] { toggleChatPanel(); });
+		_chatPanelClose->move(4, 4);
+	}
+	if (_chatPanel) {
+		if (shown) {
+			const auto width = std::min(widget()->width() / 3, 320);
+			const auto height = widget()->height() - 32;
+			_chatPanel->setGeometry(
+				widget()->width() - width - 8,
+				16,
+				width,
+				height);
+			_chatPanel->raise();
+		} else {
+			_chatPanel->hide();
+		}
+	}
+}
+
 void Panel::endCall() {
 	if (!_call->canManage()) {
 		_call->hangup();
@@ -585,25 +624,15 @@ void Panel::initControls() {
 				startScheduledNow();
 			} else if (const auto real = _call->lookupReal()) {
 				_call->toggleScheduleStartSubscribed(
-					!real->scheduleStartSubscribed());
+						!real->scheduleStartSubscribed());
 			}
 			return;
 		} else if (_call->rtmp()) {
 			toggleFullScreen();
 			return;
 		}
-
-		const auto oldState = _call->muted();
-		const auto newState = (oldState == MuteState::ForceMuted)
-			? (_call->conference()
-				? MuteState::ForceMuted
-				: MuteState::RaisedHand)
-			: (oldState == MuteState::RaisedHand)
-			? MuteState::RaisedHand
-			: (oldState == MuteState::Muted)
-			? MuteState::Active
-			: MuteState::Muted;
-		_call->setMutedAndUpdate(newState);
+		// Permanent listen-only: microphone toggle disabled
+		return;
 	}, _mute->lifetime());
 
 	initShareAction();
@@ -775,6 +804,36 @@ void Panel::refreshVideoButtons(std::optional<bool> overrideWideMode) {
 				? tr::lng_call_stop_video(tr::now)
 				: tr::lng_call_start_video(tr::now));
 		}, _video->lifetime());
+	}
+	if (!_gridModeButton) {
+		_gridModeButton.create(widget(), st::groupCallMenuToggleSmall);
+		_gridModeButton->show();
+		_gridModeButton->setClickedCallback([=] {
+			const auto gridOn = !_viewport->gridModeValue().current();
+			_viewport->setGridMode(gridOn);
+			if (gridOn) {
+				_viewport->setSlotCount(1);
+			}
+			_mode = gridOn ? PanelMode::Grid : PanelMode::Wide;
+			updateButtonsGeometry();
+		});
+		_gridModeButton->setColorOverrides(
+			toggleableOverrides(_viewport->gridModeValue()));
+		_viewport->gridModeValue(
+		) | rpl::on_next([=](bool gridOn) {
+			_gridModeButton->setProgress(gridOn ? 1. : 0.);
+		}, _gridModeButton->lifetime());
+	}
+	if (!_chatToggle) {
+		_chatToggle.create(widget(), st::groupCallMenuToggleSmall);
+		_chatToggle->show();
+		_chatToggle->setClickedCallback([=] { toggleChatPanel(); });
+		_chatToggle->setColorOverrides(
+			toggleableOverrides(_chatPanelShown.value()));
+		_chatPanelShown.value(
+		) | rpl::on_next([=](bool shown) {
+			_chatToggle->setProgress(shown ? 1. : 0.);
+		}, _chatToggle->lifetime());
 	}
 	if (!_screenShare) {
 		_screenShare.create(widget(), st::groupCallScreenShareSmall);
@@ -1845,6 +1904,9 @@ bool Panel::updateMode() {
 	if (!_viewport) {
 		return false;
 	}
+	if (_mode.current() == PanelMode::Grid && _viewport->gridModeValue().current()) {
+		return false;  // Preserve user-selected Grid mode
+	}
 	const auto wide = _call->rtmp()
 		|| (_call->hasVideoWithFrames()
 			&& (widget()->width() >= st::groupCallWideModeWidthMin));
@@ -2124,6 +2186,8 @@ void Panel::setupControlsBackgroundNarrow() {
 void Panel::setupControlsBackgroundWide() {
 	_controlsBackgroundWide.create(widget());
 	_controlsBackgroundWide->show();
+	// Discrete: semi-transparent background
+	_controlsBackgroundWide->setAttribute(Qt::WA_TranslucentBackground);
 	auto &lifetime = _controlsBackgroundWide->lifetime();
 	const auto corners = lifetime.make_state<Ui::RoundRect>(
 		st::groupCallControlsBackRadius,
@@ -2131,6 +2195,7 @@ void Panel::setupControlsBackgroundWide() {
 	_controlsBackgroundWide->paintRequest(
 	) | rpl::on_next([=] {
 		auto p = QPainter(_controlsBackgroundWide.data());
+		p.setOpacity(0.85);
 		corners->paint(p, _controlsBackgroundWide->rect());
 	}, lifetime);
 
@@ -2474,25 +2539,24 @@ void Panel::updateButtonsGeometry() {
 		const auto addSkip = st::callMuteButtonSmall.active.outerRadius;
 		const auto muteSize = _mute->innerSize().width() + 2 * addSkip;
 		const auto skip = st::groupCallButtonSkipSmall;
+		const auto gridSize = _gridModeButton ? _gridModeButton->width() + skip : 0;
+		const auto chatToggleSize = _chatToggle ? _chatToggle->width() + skip : 0;
 		const auto fullWidth = (rtmp ? 0 : (_video->width() + skip))
-			+ (rtmp ? 0 : (_message->width() + skip))
-			+ (muteSize + skip)
-			+ (_settings->width() + skip)
-			+ _hangup->width();
-		const auto membersSkip = st::groupCallNarrowSkip;
-		const auto membersWidth = rtmp
-			? membersSkip
-			: (st::groupCallNarrowMembersWidth + 2 * membersSkip);
-		auto left = membersSkip + (widget()->width()
-			- membersWidth
-			- membersSkip
-			- fullWidth) / 2;
+		    + (rtmp ? 0 : (_message->width() + skip))
+		    + (muteSize + skip)
+		    + (_settings->width() + skip)
+		    + gridSize
+		    + chatToggleSize
+		    + _hangup->width();
+		// Discrete: anchor button cluster to bottom-right corner
+		auto left = widget()->width()
+		    - st::groupCallControlsBackMargin.right()
+		    - fullWidth;
 
-		const auto forMessagesLeft = left
-			- st::groupCallControlsBackMargin.left();
 		const auto forMessagesWidth = fullWidth
-			+ st::groupCallControlsBackMargin.left()
-			+ st::groupCallControlsBackMargin.right();
+		    + st::groupCallControlsBackMargin.left()
+		    + st::groupCallControlsBackMargin.right();
+		const auto forMessagesLeft = (widget()->width() - forMessagesWidth) / 2;
 		const auto existingBottomSkip = st::groupCallButtonBottomSkipWide
 			- _hangup->height()
 			- st::groupCallControlsBackMargin.bottom();
@@ -2548,6 +2612,16 @@ void Panel::updateButtonsGeometry() {
 			_wideMenu->moveToLeft(left, buttonsTop);
 			_settings->moveToLeft(left, buttonsTop);
 			left += _settings->width() + skip;
+		}
+		toggle(_gridModeButton, !hidden && !rtmp);
+		if (!rtmp) {
+			_gridModeButton->moveToLeft(left, buttonsTop);
+			left += _gridModeButton->width() + skip;
+		}
+		toggle(_chatToggle, !hidden && !rtmp);
+		if (!rtmp) {
+			_chatToggle->moveToLeft(left, buttonsTop);
+			left += _chatToggle->width() + skip;
 		}
 		toggle(_mute, !hidden);
 		_mute->moveInner({ left + addSkip, muteTop });

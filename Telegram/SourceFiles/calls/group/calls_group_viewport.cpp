@@ -33,6 +33,8 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include <QOpenGLShader>
 #include <QtGui/QtEvents>
 #include <QOpenGLWidget>
+#include <algorithm>
+#include <cmath>
 
 namespace Calls::Group {
 namespace {
@@ -693,6 +695,34 @@ void Viewport::updateTilesGeometryWide(int outerWidth, int outerHeight) {
 		_largeChangeAnimation.stop();
 	}
 
+	// Grid mode: slot-based layout with persistent pin assignments
+	if (_gridMode.current()) {
+		const auto slotCount = _slotCount.current();
+		const auto totalSlots = slotCount * slotCount;
+		const auto grid = computeOptimalGrid(
+			outerWidth, outerHeight, totalSlots, 16.0 / 9.0);
+		_gridGeometry = grid;
+
+		const auto skip = st::groupCallVideoSmallSkip;
+		auto index = 0;
+		for (const auto &tile : _tiles) {
+			if (index >= totalSlots) {
+				tile->hide();
+			} else {
+				const auto col = index % grid.cols;
+				const auto row = index / grid.cols;
+				const auto x = col * (grid.tileWidth + skip);
+				const auto y = row * (grid.tileHeight + skip);
+				setTileGeometry(tile, { x, y, grid.tileWidth, grid.tileHeight });
+			}
+			++index;
+		}
+		// Remaining slots without active video stay empty (no placeholder tile)
+		refreshHasTwoOrMore();
+		_fullHeight = grid.rows * (grid.tileHeight + skip);
+		return;
+	}
+
 	_startTilesLayout = countWide(outerWidth, outerHeight);
 	if (_large && !_large->trackOrUserpicSize().isEmpty()) {
 		for (const auto &geometry : _startTilesLayout.list) {
@@ -942,6 +972,100 @@ rpl::producer<int> Viewport::fullHeightValue() const {
 rpl::producer<bool> Viewport::pinToggled() const {
 	return _pinToggles.events();
 }
+
+void Viewport::setGridMode(bool enabled) {
+	if (_gridMode.current() == enabled) return;
+	_gridMode = enabled;
+	if (enabled) {
+		updateTilesGeometry();
+	}
+}
+
+rpl::producer<bool> Viewport::gridModeValue() const {
+	return _gridMode.value();
+}
+
+void Viewport::setSlotCount(int count) {
+	if (count < 1) count = 1;
+	if (count > 3) count = 3;
+	if (_slotCount.current() == count) return;
+	_slotCount = count;
+	_slotCountChanges.fire_copy(count);
+	updateTilesGeometry();
+}
+
+rpl::producer<int> Viewport::slotCountValue() const {
+	return _slotCount.value();
+}
+
+void Viewport::pinToSlot(int slotIndex, const VideoEndpoint &endpoint) {
+	if (slotIndex < 1 || slotIndex > 9) return;
+	_pinnedSlots[slotIndex] = endpoint;
+	// Request Full quality for pinned slot tile (simulcast upscaling)
+	_qualityRequests.fire(VideoQualityRequest{
+		.endpoint = endpoint,
+		.quality = VideoQuality::Full,
+	});
+	updateTilesGeometry();
+}
+
+void Viewport::unpinSlot(int slotIndex) {
+	if (slotIndex < 1 || slotIndex > 9) return;
+	const auto it = _pinnedSlots.find(slotIndex);
+	if (it == _pinnedSlots.end()) return;
+	const auto endpoint = it->second;
+	_pinnedSlots.erase(it);
+	// Restore normal quality for unpinned tile
+	_qualityRequests.fire(VideoQualityRequest{
+		.endpoint = endpoint,
+		.quality = VideoQuality::Medium,
+	});
+	updateTilesGeometry();
+}
+
+std::optional<VideoEndpoint> Viewport::slotEndpoint(int slotIndex) const {
+	const auto it = _pinnedSlots.find(slotIndex);
+	if (it == _pinnedSlots.end()) return std::nullopt;
+	return it->second;
+}
+
+namespace {
+
+//
+// Grid layout solver (from Qt reference doc)
+// Selects column count $c$ and row count $r$ to maximize total active
+// video area bounded by viewport dimensions for target 16:9 aspect ratio.
+//
+GridGeometry computeOptimalGrid(
+		int viewportWidth,
+		int viewportHeight,
+		int participantCount,
+		double targetAspect = 16.0 / 9.0) {
+	GridGeometry best;
+	if (participantCount <= 0 || viewportWidth <= 0 || viewportHeight <= 0) {
+		return best;
+	}
+	for (int c = 1; c <= participantCount; ++c) {
+		int r = static_cast<int>(std::ceil(static_cast<double>(participantCount) / c));
+
+		double maxW = std::min(
+			static_cast<double>(viewportWidth) / c,
+			(static_cast<double>(viewportHeight) / r) * targetAspect);
+		double maxH = maxW / targetAspect;
+
+		double area = participantCount * maxW * maxH;
+		if (area > best.totalArea) {
+			best.totalArea = area;
+			best.cols = c;
+			best.rows = r;
+			best.tileWidth = static_cast<int>(std::floor(maxW));
+			best.tileHeight = static_cast<int>(std::floor(maxH));
+		}
+	}
+	return best;
+}
+
+} // namespace
 
 rpl::producer<VideoEndpoint> Viewport::clicks() const {
 	return _clicks.events();

@@ -133,6 +133,7 @@ enum class PanelMode {
 	Default,
 	Wide,
 	VideoStream,
+	Grid,        // 1x1 / 2x2 / 3x3 slot layout, persistent pin slots
 };
 
 enum class VideoQuality {
