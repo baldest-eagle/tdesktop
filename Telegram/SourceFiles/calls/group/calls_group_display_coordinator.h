@@ -25,6 +25,9 @@ class FlatLabel;
 namespace Calls::Group {
 
 class Viewport;
+struct VideoEndpoint;
+struct VideoTileTrack;
+enum class PanelMode;
 
 enum class DisplayRole {
 	ActiveSpeaker,
@@ -35,6 +38,7 @@ enum class DisplayRole {
 
 struct DisplayWindow {
 	std::unique_ptr<QWidget> widget;
+	std::unique_ptr<Viewport> viewport;
 	DisplayRole role = DisplayRole::None;
 	QScreen *screen = nullptr;
 };
@@ -55,13 +59,29 @@ public:
 	void showDisplay(int displayIndex);
 	void hideDisplay(int displayIndex);
 
+	// Video routing
+	void addVideoTrack(
+		int displayIndex,
+		const VideoEndpoint &endpoint,
+		const VideoTileTrack &track,
+		rpl::producer<QSize> trackSize,
+		rpl::producer<bool> pinned,
+		bool self);
+	void removeVideoTrack(int displayIndex, const VideoEndpoint &endpoint);
+	void showLarge(int displayIndex, const VideoEndpoint &endpoint);
+
+	// Active speaker detection
+	void updateAudioLevels(const std::vector<std::pair<PeerData*, double>> &levels);
+
 	[[nodiscard]] int displayCount() const;
 	[[nodiscard]] rpl::producer<int> displayCountChanged() const;
+	[[nodiscard]] rpl::producer<VideoEndpoint> qualityRequests() const;
 
 private:
 	void createDisplayWindow(int displayIndex, QScreen *screen);
 	void destroyDisplayWindow(int displayIndex);
 	void setupWindowGeometry(DisplayWindow &display);
+	void updateViewportParent(int displayIndex);
 
 	not_null<QWidget*> _parent;
 	Ui::GL::Backend _backend;
@@ -70,7 +90,12 @@ private:
 
 	std::map<int, DisplayWindow> _displays;
 	rpl::event_stream<int> _displayCountChanged;
+	rpl::event_stream<VideoEndpoint> _qualityRequests;
 	rpl::lifetime _lifetime;
+
+	// Active speaker tracking
+	PeerData *_activeSpeaker = nullptr;
+	double _speakerThreshold = 0.05;
 
 };
 

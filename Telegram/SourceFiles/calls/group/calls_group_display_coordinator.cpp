@@ -7,6 +7,7 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 */
 #include "calls/group/calls_group_display_coordinator.h"
 
+#include "calls/group/calls_group_viewport.h"
 #include "ui/widgets/labels.h"
 #include "styles/style_calls.h"
 
@@ -104,10 +105,27 @@ void DisplayCoordinator::createDisplayWindow(int displayIndex, QScreen *screen) 
 	display.widget->setWindowTitle(RoleText(display.role));
 	display.widget->setAttribute(Qt::WA_OpaquePaintEvent);
 
+	// Create a Viewport for this display
+	display.viewport = std::make_unique<Viewport>(
+		display.widget.get(),
+		PanelMode::Wide,
+		_backend);
+	if (!display.viewport) {
+		display.widget.reset();
+		_displays.erase(displayIndex);
+		return;
+	}
+
 	// Position on the target screen
 	const auto screenGeo = screen->availableGeometry();
 	display.widget->setGeometry(screenGeo);
 	display.widget->show();
+
+	// Connect quality requests from this viewport
+	display.viewport->qualityRequests(
+	) | rpl::on_next([=](const VideoQualityRequest &request) {
+		_qualityRequests.fire(request.endpoint);
+	}, display.viewport->lifetime());
 
 	// Set up content
 	setupWindowGeometry(display);
@@ -118,6 +136,9 @@ void DisplayCoordinator::destroyDisplayWindow(int displayIndex) {
 	if (it == _displays.end()) {
 		return;
 	}
+	if (it->second.viewport) {
+		it->second.viewport.reset();
+	}
 	if (it->second.widget) {
 		it->second.widget->hide();
 		it->second.widget.reset();
@@ -126,7 +147,7 @@ void DisplayCoordinator::destroyDisplayWindow(int displayIndex) {
 }
 
 void DisplayCoordinator::setupWindowGeometry(DisplayWindow &display) {
-	if (!display.widget) {
+	if (!display.widget || !display.viewport) {
 		return;
 	}
 
@@ -137,6 +158,9 @@ void DisplayCoordinator::setupWindowGeometry(DisplayWindow &display) {
 
 	const auto geo = screen->availableGeometry();
 	display.widget->setGeometry(geo);
+
+	// Set viewport geometry to fill the widget
+	display.viewport->setGeometry(false, QRect(0, 0, geo.width(), geo.height()));
 }
 
 void DisplayCoordinator::setRole(int displayIndex, DisplayRole role) {
@@ -147,6 +171,12 @@ void DisplayCoordinator::setRole(int displayIndex, DisplayRole role) {
 	it->second.role = role;
 	if (it->second.widget) {
 		it->second.widget->setWindowTitle(RoleText(role));
+	}
+
+	// Re-route video based on new role
+	if (role == DisplayRole::ActiveSpeaker && _activeSpeaker) {
+		// Show active speaker large
+		showLarge(displayIndex, /* active speaker endpoint */);
 	}
 }
 
@@ -180,12 +210,78 @@ void DisplayCoordinator::hideDisplay(int displayIndex) {
 	}
 }
 
+void DisplayCoordinator::addVideoTrack(
+		int displayIndex,
+		const VideoEndpoint &endpoint,
+		const VideoTileTrack &track,
+		rpl::producer<QSize> trackSize,
+		rpl::producer<bool> pinned,
+		bool self) {
+	auto it = _displays.find(displayIndex);
+	if (it == _displays.end()) {
+		return;
+	}
+	if (!it->second.viewport) {
+		return;
+	}
+	it->second.viewport->add(endpoint, track, std::move(trackSize), std::move(pinned), self);
+}
+
+void DisplayCoordinator::removeVideoTrack(int displayIndex, const VideoEndpoint &endpoint) {
+	auto it = _displays.find(displayIndex);
+	if (it == _displays.end()) {
+		return;
+	}
+	if (!it->second.viewport) {
+		return;
+	}
+	it->second.viewport->remove(endpoint);
+}
+
+void DisplayCoordinator::showLarge(int displayIndex, const VideoEndpoint &endpoint) {
+	auto it = _displays.find(displayIndex);
+	if (it == _displays.end()) {
+		return;
+	}
+	if (!it->second.viewport) {
+		return;
+	}
+	it->second.viewport->showLarge(endpoint);
+}
+
+void DisplayCoordinator::updateAudioLevels(const std::vector<std::pair<PeerData*, double>> &levels) {
+	// Find the loudest speaker
+	PeerData* newSpeaker = nullptr;
+	double maxLevel = 0.0;
+	for (const auto &[peer, level] : levels) {
+		if (level > maxLevel && level > _speakerThreshold) {
+			maxLevel = level;
+			newSpeaker = peer;
+		}
+	}
+
+	if (newSpeaker != _activeSpeaker) {
+		_activeSpeaker = newSpeaker;
+		// Update displays with ActiveSpeaker role
+		for (auto &[index, display] : _displays) {
+			if (display.role == DisplayRole::ActiveSpeaker && display.viewport) {
+				// Show the active speaker large
+				// Note: need to find the endpoint for this peer
+			}
+		}
+	}
+}
+
 int DisplayCoordinator::displayCount() const {
 	return static_cast<int>(_displays.size());
 }
 
 rpl::producer<int> DisplayCoordinator::displayCountChanged() const {
 	return _displayCountChanged.events();
+}
+
+rpl::producer<VideoEndpoint> DisplayCoordinator::qualityRequests() const {
+	return _qualityRequests.events();
 }
 
 QString DisplayRoleText(DisplayRole role) {

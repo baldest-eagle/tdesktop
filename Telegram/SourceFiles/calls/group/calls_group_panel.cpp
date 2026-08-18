@@ -1115,6 +1115,51 @@ void Panel::setupMembers() {
 
 	setupVideo(_viewport.get());
 	setupVideo(_members->viewport());
+	routeVideoToDisplays();
+
+	// Re-route video when displays change
+	_displayCoordinator->displayCountChanged(
+	) | rpl::on_next([=](int count) {
+		if (count > 0) {
+			routeVideoToDisplays();
+		}
+	}, _callLifetime);
+
+	// Route new video tracks to secondary displays
+	_call->videoStreamActiveUpdates(
+	) | rpl::on_next([=](const VideoStateToggle &update) {
+		if (!update.value) {
+			for (int i = 0; i < _displayCoordinator->displayCount(); ++i) {
+				_displayCoordinator->removeVideoTrack(i, update.endpoint);
+			}
+		} else {
+			const auto &tracks = _call->activeVideoTracks();
+			const auto it = tracks.find(update.endpoint);
+			if (it != tracks.end()) {
+				for (int i = 0; i < _displayCoordinator->displayCount(); ++i) {
+					const auto role = _displayCoordinator->role(i);
+					if (role == DisplayRole::GridViewport) {
+						const auto row = _members->lookupRow(GroupCall::TrackPeer(it->second));
+						if (row) {
+							_displayCoordinator->addVideoTrack(
+								i,
+								update.endpoint,
+								VideoTileTrack{ GroupCall::TrackPointer(it->second), row },
+								GroupCall::TrackSizeValue(it->second),
+								rpl::single(false),
+								update.endpoint.peer == _call->joinAs());
+						}
+					}
+				}
+			}
+		}
+	}, _callLifetime);
+
+	// Handle quality requests from secondary displays
+	_displayCoordinator->qualityRequests(
+	) | rpl::on_next([=](const VideoEndpoint &endpoint) {
+		_call->requestVideoQuality(endpoint, VideoQuality::Full);
+	}, _callLifetime);
 	_viewport->mouseInsideValue(
 	) | rpl::filter([=] {
 		return !_rtmpFull;
@@ -1357,6 +1402,33 @@ void Panel::setupVideo(not_null<Viewport*> viewport) {
 	) | rpl::on_next([=](const VideoQualityRequest &request) {
 		_call->requestVideoQuality(request.endpoint, request.quality);
 	}, viewport->lifetime());
+}
+
+void Panel::routeVideoToDisplays() {
+	if (!_displayCoordinator || _displayCoordinator->displayCount() == 0) {
+		return;
+	}
+
+	// Route active video tracks to secondary displays
+	const auto &tracks = _call->activeVideoTracks();
+	for (const auto &[endpoint, track] : tracks) {
+		const auto row = _members->lookupRow(GroupCall::TrackPeer(track));
+		if (!row) {
+			continue;
+		}
+		for (int i = 0; i < _displayCoordinator->displayCount(); ++i) {
+			const auto role = _displayCoordinator->role(i);
+			if (role == DisplayRole::GridViewport) {
+				_displayCoordinator->addVideoTrack(
+					i,
+					endpoint,
+					VideoTileTrack{ GroupCall::TrackPointer(track), row },
+					GroupCall::TrackSizeValue(track),
+					rpl::single(false),
+					endpoint.peer == _call->joinAs());
+			}
+		}
+	}
 }
 
 void Panel::toggleWideControls(bool shown) {

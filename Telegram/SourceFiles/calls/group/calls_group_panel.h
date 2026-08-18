@@ -10,6 +10,7 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "base/object_ptr.h"
 #include "calls/group/calls_group_call.h"
 #include "calls/group/calls_group_common.h"
+#include "calls/group/calls_group_display_coordinator.h"
 #include "calls/group/calls_choose_join_as.h"
 #include "calls/group/ui/desktop_capture_choose_source.h"
 #include "ui/effects/animations.h"
@@ -130,6 +131,7 @@ private:
 	void setupScheduledLabels(rpl::producer<TimeId> date);
 	void setupMembers();
 	void setupVideo(not_null<Viewport*> viewport);
+	void routeVideoToDisplays();
 	void setupRealMuteButtonState(not_null<Data::GroupCall*> real);
 	[[nodiscard]] rpl::producer<QString> titleText();
 
