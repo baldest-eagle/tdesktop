@@ -260,6 +260,7 @@ private:
 	std::unique_ptr<MessagesUi> _panelMessages;
 	object_ptr<Ui::IconButton> _chatPanelClose = { nullptr };
 	rpl::variable<bool> _chatPanelShown = false;
+	std::unique_ptr<DisplayCoordinator> _displayCoordinator;
 	std::unique_ptr<Ui::CallMuteButton> _mute;
 	object_ptr<Ui::CallButton> _hangup;
 	object_ptr<Ui::ImportantTooltip> _niceTooltip = { nullptr };

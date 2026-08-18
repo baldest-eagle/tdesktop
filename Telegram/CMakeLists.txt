@@ -453,6 +453,8 @@ PRIVATE
     calls/group/calls_group_viewport_raster.h
     calls/group/calls_group_viewport_rhi.cpp
     calls/group/calls_group_viewport_rhi.h
+    calls/group/calls_group_display_coordinator.cpp
+    calls/group/calls_group_display_coordinator.h
     calls/group/calls_group_viewport_tile.cpp
     calls/group/calls_group_viewport_tile.h
     calls/group/calls_volume_item.cpp
