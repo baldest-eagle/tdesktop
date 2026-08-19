@@ -10,8 +10,6 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "base/object_ptr.h"
 #include "calls/group/calls_group_call.h"
 #include "calls/group/calls_group_common.h"
-#include "calls/group/calls_group_display_coordinator.h"
-#include "calls/group/calls_group_floating_overlay.h"
 #include "calls/group/calls_choose_join_as.h"
 #include "calls/group/ui/desktop_capture_choose_source.h"
 #include "ui/effects/animations.h"
@@ -132,8 +130,6 @@ private:
 	void setupScheduledLabels(rpl::producer<TimeId> date);
 	void setupMembers();
 	void setupVideo(not_null<Viewport*> viewport);
-	void routeVideoToDisplays();
-	void retryRoutingForPeer(not_null<PeerData*> peer);
 	void setupRealMuteButtonState(not_null<Data::GroupCall*> real);
 	[[nodiscard]] rpl::producer<QString> titleText();
 
@@ -176,7 +172,6 @@ private:
 	[[nodiscard]] bool videoButtonInNarrowMode() const;
 	[[nodiscard]] Fn<void()> shareConferenceLinkCallback();
 	void toggleMessageTyping();
-	void toggleChatPanel();
 	[[nodiscard]] rpl::producer<Ui::CallButtonColors> toggleableOverrides(
 		rpl::producer<bool> active);
 
@@ -258,16 +253,6 @@ private:
 	object_ptr<Ui::CallButton> _video = { nullptr };
 	object_ptr<Ui::CallButton> _screenShare = { nullptr };
 	object_ptr<Ui::CallButton> _message = { nullptr };
-	object_ptr<Ui::CallButton> _gridModeButton = { nullptr };
-	object_ptr<Ui::CallButton> _chatToggle = { nullptr };
-	object_ptr<Ui::RpWidget> _chatPanel = { nullptr };
-	std::unique_ptr<MessagesUi> _panelMessages;
-	object_ptr<Ui::IconButton> _chatPanelClose = { nullptr };
-	rpl::variable<bool> _chatPanelShown = false;
-	// Track which endpoints have been routed to which displays to avoid duplicates
-	std::map<int, std::set<VideoEndpoint>> _routedEndpoints;
-	std::unique_ptr<DisplayCoordinator> _displayCoordinator;
-	std::unique_ptr<FloatingOverlay> _floatingOverlay;
 	std::unique_ptr<Ui::CallMuteButton> _mute;
 	object_ptr<Ui::CallButton> _hangup;
 	object_ptr<Ui::ImportantTooltip> _niceTooltip = { nullptr };

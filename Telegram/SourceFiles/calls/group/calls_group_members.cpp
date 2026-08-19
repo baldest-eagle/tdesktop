@@ -1518,34 +1518,6 @@ base::unique_qptr<Ui::PopupMenu> Members::Controller::createRowContextMenu(
 				tr::lng_context_send_message(tr::now),
 				showHistory);
 		}
-		result->addSeparator();
-		result->addAction(
-			tr::lng_group_call_open_chat(tr::now),
-			[=] {
-				if (const auto window = Core::App().activePrimaryWindow()) {
-					window->showPeerHistory(participantPeer);
-				}
-			});
-		const auto pinned = _call->videoEndpointPinned();
-		if (pinned && pinned->peer() == participantPeer) {
-			result->addAction(
-				tr::lng_group_call_context_unpin(tr::now),
-				[=] { _call->pinVideoEndpoint({}); });
-		} else {
-			result->addAction(
-				tr::lng_group_call_context_pin_to_grid(tr::now),
-				[=] {
-					if (_viewport) {
-						const auto slotIndex = 1;
-						const auto camera = VideoEndpoint{
-							VideoEndpointType::Camera,
-							participantPeer,
-							computeCameraEndpoint(participant),
-						};
-						_viewport->pinToSlot(slotIndex, camera);
-					}
-				});
-		}
 		const auto canKick = [&] {
 			const auto user = participantPeer->asUser();
 			if (muteState == Row::State::Invited

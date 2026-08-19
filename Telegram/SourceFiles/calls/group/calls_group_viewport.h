@@ -99,15 +99,6 @@ public:
 	void remove(const VideoEndpoint &endpoint);
 	void showLarge(const VideoEndpoint &endpoint);
 
-	// Grid mode (1x1 / 2x2 / 3x3) with persistent pin slots
-	void setGridMode(bool enabled);
-	void setSlotCount(int count);
-	void pinToSlot(int slotIndex, const VideoEndpoint &endpoint);
-	void unpinSlot(int slotIndex);
-	std::optional<VideoEndpoint> slotEndpoint(int slotIndex) const;
-	[[nodiscard]] rpl::producer<int> slotCountValue() const;
-	[[nodiscard]] rpl::producer<bool> gridModeValue() const;
-
 	[[nodiscard]] bool requireARGB32() const;
 	[[nodiscard]] int fullHeight() const;
 	[[nodiscard]] rpl::producer<int> fullHeightValue() const;
@@ -151,14 +142,6 @@ private:
 		QSize size;
 		QRect rows;
 		QRect columns;
-	};
-
-	struct GridGeometry {
-		int cols = 1;
-		int rows = 1;
-		int tileWidth = 0;
-		int tileHeight = 0;
-		double totalArea = 0.0;
 	};
 
 	struct Layout {
@@ -243,11 +226,6 @@ private:
 	Ui::Animations::Simple _largeChangeAnimation;
 	Layout _startTilesLayout;
 	Layout _finishTilesLayout;
-	GridGeometry _gridGeometry;
-	rpl::variable<bool> _gridMode = false;
-	rpl::variable<int> _slotCount = 1;          // 1, 2, or 3
-	std::map<int, VideoEndpoint> _pinnedSlots;  // slotIndex 1..9 -> endpoint
-	rpl::event_stream<int> _slotCountChanges;
 	Selection _selected;
 	Selection _pressed;
 	rpl::variable<bool> _mouseInside = false;

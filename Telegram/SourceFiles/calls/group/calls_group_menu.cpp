@@ -591,20 +591,12 @@ void FillMenu(
 			}
 		};
 		menu->addAction(
-			call->isSharingScreen()
+			(call->isSharingScreen()
 				? tr::lng_group_call_screen_share_stop(tr::now)
-				: tr::lng_group_call_screen_share_start(tr::now),
+				: tr::lng_group_call_screen_share_start(tr::now)),
 			toggle);
-		}
-		menu->addSeparator();
-		menu->addAction(tr::lng_group_call_open_chat(tr::now), [=] {
-			if (const auto strong = weak.get()) {
-				if (const auto window = Core::App().activePrimaryWindow()) {
-					window->showPeerHistory(strong->peer());
-				}
-			}
-		});
-		menu->addAction(tr::lng_group_call_settings(tr::now), [=] {
+	}
+	menu->addAction(tr::lng_group_call_settings(tr::now), [=] {
 		if (const auto strong = weak.get()) {
 			showBox(Box(SettingsBox, strong));
 		}

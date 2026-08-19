@@ -518,10 +518,10 @@ rpl::producer<Webrtc::DeviceResolvedId> Call::captureMuteDeviceId() {
 	return _captureDeviceId.value();
 }
 
-void Call::setMuted(bool /*mute*/) {
-	_muted = true;  // Permanent listen-only: always mute
+void Call::setMuted(bool mute) {
+	_muted = mute;
 	if (_instance) {
-		_instance->setMuteMicrophone(true);
+		_instance->setMuteMicrophone(mute);
 	}
 }
 
@@ -1098,7 +1098,7 @@ void Call::createAndStartController(const MTPDphoneCall &call) {
 			std::move(encryptionKeyValue),
 			(_type == Type::Outgoing)),
 		.mediaDevicesConfig = tgcalls::MediaDevicesConfig{
-			.audioInputId = "",  // Permanent listen-only: no audio input device
+			.audioInputId = captureDeviceIdInitial.value.toStdString(),
 			.audioOutputId = playbackDeviceIdInitial.value.toStdString(),
 			.inputVolume = 1.f,//settings.callInputVolume() / 100.f,
 			.outputVolume = 1.f,//settings.callOutputVolume() / 100.f,
