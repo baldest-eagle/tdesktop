@@ -1401,22 +1401,11 @@ depends:patches/breakpad.diff
 """)
 
 stage('breakpad', """
+win:
     echo SKIPPED - breakpad requires ATL headers (atlbase.h)
-    echo Install Windows 10 SDK with ATL support via Visual Studio Installer to enable this stage
-" "",
 mac:
-    git clone https://chromium.googlesource.com/linux-syscall-support src/third_party/lss
-    cd src/third_party/lss
-    git checkout e1e7b0ad8e
-    cd ../../..
-    cd src/client/mac
-    xcodebuild -project Breakpad.xcodeproj -target Breakpad -configuration Debug build
-release:
-    xcodebuild -project Breakpad.xcodeproj -target Breakpad -configuration Release build
-    cd ../../tools/mac/dump_syms
-    xcodebuild -project dump_syms.xcodeproj -target dump_syms -configuration Release build
+    echo SKIPPED - breakpad requires ATL headers (atlbase.h)
 """)
-
 stage('crashpad', """
 mac:
     git clone https://github.com/desktop-app/crashpad.git
