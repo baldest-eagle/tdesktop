@@ -147,6 +147,8 @@ void DisplayCoordinator::destroyDisplayWindow(int displayIndex) {
 		it->second.widget.reset();
 	}
 	_displays.erase(it);
+	// Clean up routed endpoints for this display
+	_routedEndpoints.erase(displayIndex);
 }
 
 void DisplayCoordinator::setupWindowGeometry(DisplayWindow &display) {
