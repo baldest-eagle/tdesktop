@@ -133,6 +133,7 @@ private:
 	void setupMembers();
 	void setupVideo(not_null<Viewport*> viewport);
 	void routeVideoToDisplays();
+	void retryRoutingForPeer(not_null<PeerData*> peer);
 	void setupRealMuteButtonState(not_null<Data::GroupCall*> real);
 	[[nodiscard]] rpl::producer<QString> titleText();
 
@@ -263,8 +264,9 @@ private:
 	std::unique_ptr<MessagesUi> _panelMessages;
 	object_ptr<Ui::IconButton> _chatPanelClose = { nullptr };
 	rpl::variable<bool> _chatPanelShown = false;
+	// Track which endpoints have been routed to which displays to avoid duplicates
+	std::map<int, std::set<VideoEndpoint>> _routedEndpoints;
 	std::unique_ptr<DisplayCoordinator> _displayCoordinator;
-	std::unique_ptr<FloatingOverlay> _floatingOverlay;
 	std::unique_ptr<Ui::CallMuteButton> _mute;
 	object_ptr<Ui::CallButton> _hangup;
 	object_ptr<Ui::ImportantTooltip> _niceTooltip = { nullptr };

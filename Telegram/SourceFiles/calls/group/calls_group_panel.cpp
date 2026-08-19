@@ -1145,28 +1145,42 @@ void Panel::setupMembers() {
 		if (!update.value) {
 			for (int i = 0; i < _displayCoordinator->displayCount(); ++i) {
 				_displayCoordinator->removeVideoTrack(i, update.endpoint);
+				_routedEndpoints[i].erase(update.endpoint);
 			}
 		} else {
-			const auto &tracks = _call->activeVideoTracks();
-			const auto it = tracks.find(update.endpoint);
-			if (it != tracks.end()) {
-				for (int i = 0; i < _displayCoordinator->displayCount(); ++i) {
-					const auto role = _displayCoordinator->role(i);
-					if (role == DisplayRole::GridViewport) {
-						const auto row = _members->lookupRow(GroupCall::TrackPeer(it->second));
-						if (row) {
-							_displayCoordinator->addVideoTrack(
-								i,
-								update.endpoint,
-								VideoTileTrack{ GroupCall::TrackPointer(it->second), row },
-								GroupCall::TrackSizeValue(it->second),
-								rpl::single(false),
-								update.endpoint.peer == _call->joinAs());
+			// Defer to allow the participant row to be created first
+			const auto endpoint = update.endpoint;
+			crl::on_main(widget(), [=] {
+				const auto &tracks = _call->activeVideoTracks();
+				const auto it = tracks.find(endpoint);
+				if (it != tracks.end()) {
+					for (int i = 0; i < _displayCoordinator->displayCount(); ++i) {
+						auto &routed = _routedEndpoints[i];
+						if (routed.find(endpoint) != routed.end()) continue;
+						const auto role = _displayCoordinator->role(i);
+						if (role == DisplayRole::GridViewport) {
+							const auto row = _members->lookupRow(GroupCall::TrackPeer(it->second));
+							if (row) {
+								_displayCoordinator->addVideoTrack(
+									i,
+									endpoint,
+									VideoTileTrack{ GroupCall::TrackPointer(it->second), row },
+									GroupCall::TrackSizeValue(it->second),
+									rpl::single(false),
+									endpoint.peer == _call->joinAs());
+								routed.insert(endpoint);
+							}
 						}
 					}
 				}
-			}
+			});
 		}
+	}, _callLifetime);
+
+	// Retry routing when new participants are added to Members
+	_members->addMembersRequests(
+	) | rpl::on_next([=] {
+		routeVideoToDisplays();
 	}, _callLifetime);
 
 	// Handle quality requests from secondary displays
@@ -1424,13 +1438,48 @@ void Panel::routeVideoToDisplays() {
 	}
 
 	// Route active video tracks to secondary displays
+	// Defer to allow participant rows to be populated first
+	crl::on_main(widget(), [=] {
+		const auto &tracks = _call->activeVideoTracks();
+		for (const auto &[endpoint, track] : tracks) {
+			const auto row = _members->lookupRow(GroupCall::TrackPeer(track));
+			if (!row) {
+				continue;
+			}
+			for (int i = 0; i < _displayCoordinator->displayCount(); ++i) {
+				// Skip if already routed to this display
+				auto &routed = _routedEndpoints[i];
+				if (routed.find(endpoint) != routed.end()) {
+					continue;
+				}
+				const auto role = _displayCoordinator->role(i);
+				if (role == DisplayRole::GridViewport) {
+					_displayCoordinator->addVideoTrack(
+						i,
+						endpoint,
+						VideoTileTrack{ GroupCall::TrackPointer(track), row },
+						GroupCall::TrackSizeValue(track),
+						rpl::single(false),
+						endpoint.peer == _call->joinAs());
+					routed.insert(endpoint);
+				}
+			}
+		}
+	});
+}
+
+void Panel::retryRoutingForPeer(not_null<PeerData*> peer) {
+	if (!_displayCoordinator || _displayCoordinator->displayCount() == 0) {
+		return;
+	}
 	const auto &tracks = _call->activeVideoTracks();
 	for (const auto &[endpoint, track] : tracks) {
+		if (endpoint.peer != peer) continue;
 		const auto row = _members->lookupRow(GroupCall::TrackPeer(track));
-		if (!row) {
-			continue;
-		}
+		if (!row) continue;
 		for (int i = 0; i < _displayCoordinator->displayCount(); ++i) {
+			auto &routed = _routedEndpoints[i];
+			if (routed.find(endpoint) != routed.end()) continue;
 			const auto role = _displayCoordinator->role(i);
 			if (role == DisplayRole::GridViewport) {
 				_displayCoordinator->addVideoTrack(
@@ -1440,6 +1489,7 @@ void Panel::routeVideoToDisplays() {
 					GroupCall::TrackSizeValue(track),
 					rpl::single(false),
 					endpoint.peer == _call->joinAs());
+				routed.insert(endpoint);
 			}
 		}
 	}
