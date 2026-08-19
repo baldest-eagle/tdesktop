@@ -267,6 +267,7 @@ private:
 	// Track which endpoints have been routed to which displays to avoid duplicates
 	std::map<int, std::set<VideoEndpoint>> _routedEndpoints;
 	std::unique_ptr<DisplayCoordinator> _displayCoordinator;
+	std::unique_ptr<FloatingOverlay> _floatingOverlay;
 	std::unique_ptr<Ui::CallMuteButton> _mute;
 	object_ptr<Ui::CallButton> _hangup;
 	object_ptr<Ui::ImportantTooltip> _niceTooltip = { nullptr };
