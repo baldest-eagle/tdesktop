@@ -1401,35 +1401,9 @@ depends:patches/breakpad.diff
 """)
 
 stage('breakpad', """
-    git clone https://chromium.googlesource.com/breakpad/breakpad
-    cd breakpad
-    git checkout dfcb7b6799
-depends:patches/breakpad.diff
-    git apply ../patches/breakpad.diff
-    git clone -b release-1.11.0 https://github.com/google/googletest src/testing
-win:
-    SET "PYTHONUTF8=1"
-    SET "FolderPostfix="
-    SET "ToolsetProp="
-win64:
-    SET "FolderPostfix=_x64"
-winarm:
-    SET "FolderPostfix=_ARM64"
-    SET "ToolsetProp=/property:PlatformToolset=v145"
-win:
-depends:python/Scripts/activate.bat
-    %THIRDPARTY_DIR%\\python\\Scripts\\activate.bat
-    cd src\\client\\windows
-    gyp --no-circular-check breakpad_client.gyp --format=ninja
-    cd ..\\..
-    ninja -C out/Debug%FolderPostfix% common crash_generation_client exception_handler
-release:
-    ninja -C out/Release%FolderPostfix% common crash_generation_client exception_handler
-    cd tools\\windows\\dump_syms
-    gyp dump_syms.gyp --format=msvs
-    msbuild -m dump_syms.vcxproj /property:Configuration=Release /property:Platform="x64" %ToolsetProp%
-win:
-    deactivate
+    echo SKIPPED - breakpad requires ATL headers (atlbase.h)
+    echo Install Windows 10 SDK with ATL support via Visual Studio Installer to enable this stage
+" "",
 mac:
     git clone https://chromium.googlesource.com/linux-syscall-support src/third_party/lss
     cd src/third_party/lss
