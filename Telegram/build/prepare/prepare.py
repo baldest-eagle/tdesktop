@@ -82,7 +82,6 @@ if not os.path.isdir(os.path.join(thirdPartyDir, keysLoc)):
     pathlib.Path(os.path.join(thirdPartyDir, keysLoc)).mkdir(parents=True, exist_ok=True)
 
 pathPrefixes = [
-    'ThirdParty\\msys64\\mingw64\\bin',
     'ThirdParty\\jom',
     'ThirdParty\\gyp',
 ] if win else [
@@ -479,7 +478,8 @@ win:
         mingw-w64-x86_64-gperf ^
         mingw-w64-x86_64-nasm ^
         mingw-w64-x86_64-perl ^
-        mingw-w64-x86_64-pkgconf
+        mingw-w64-x86_64-pkgconf ^
+        pkgconf
 """, 'ThirdParty')
 
 stage('python', """
@@ -623,6 +623,7 @@ stage('openssl3', """
 win32:
     perl Configure no-shared no-tests debug-VC-WIN32 /FS
 win64:
+    SET PATH=C:\\StrawberryPerl\\perl\\bin;%PATH%
     perl Configure no-shared no-tests debug-VC-WIN64A /FS
 winarm:
     perl Configure no-shared no-tests debug-VC-WIN64-ARM /FS
@@ -930,8 +931,8 @@ stage('libwebp', """
     git clone -b v1.6.0 https://github.com/webmproject/libwebp.git
     cd libwebp
 win:
-    nmake /f Makefile.vc CFG=debug-static OBJDIR=out RTLIBCFG=static all
-    nmake /f Makefile.vc CFG=release-static OBJDIR=out RTLIBCFG=static all
+    nmake /f Makefile.vc CFG=debug-static OBJDIR=out RTLIBCFG=static ARCH=x64 all
+    nmake /f Makefile.vc CFG=release-static OBJDIR=out RTLIBCFG=static ARCH=x64 all
     copy out\\release-static\\$X8664\\lib\\libwebp.lib out\\release-static\\$X8664\\lib\\webp.lib
     copy out\\release-static\\$X8664\\lib\\libwebpdemux.lib out\\release-static\\$X8664\\lib\\webpdemux.lib
     copy out\\release-static\\$X8664\\lib\\libwebpmux.lib out\\release-static\\$X8664\\lib\\webpmux.lib
@@ -1088,7 +1089,7 @@ winarm:
     SET "TOOLCHAIN=arm64-win64-vs17-v145"
 win:
 depends:patches/build_libvpx_win.sh
-    bash --login ../patches/build_libvpx_win.sh
+    bash ../patches/build_libvpx_win.sh
 mac:
     find ../patches/libvpx -type f -print0 | sort -z | xargs -0 git apply
 
@@ -1189,7 +1190,7 @@ winarm:
     SET "ARCH_PARAM=--arch=aarch64"
 win:
 depends:patches/build_ffmpeg_win.sh
-    bash --login ../patches/build_ffmpeg_win.sh
+    bash ../patches/build_ffmpeg_win.sh
 mac:
     export PKG_CONFIG_PATH=$USED_PREFIX/lib/pkgconfig
 
