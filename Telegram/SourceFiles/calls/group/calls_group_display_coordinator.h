@@ -8,18 +8,22 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #pragma once
 
 #include "base/object_ptr.h"
-#include "ui/gl/gl_backend.h"
+#include "base/unique_qptr.h"
+#include "ui/rp_widget.h"
 
 #include <QtGui/QScreen>
 
 #include <map>
 #include <set>
+#include <utility>
 
 class QWidget;
 
 namespace Ui {
-class RpWidget;
 class FlatLabel;
+namespace GL {
+enum class Backend;
+} // namespace GL
 } // namespace Ui
 
 namespace Calls::Group {
@@ -37,7 +41,7 @@ enum class DisplayRole {
 };
 
 struct DisplayWindow {
-	std::unique_ptr<QWidget> widget;
+	base::unique_qptr<QWidget> widget;
 	std::unique_ptr<Viewport> viewport;
 	DisplayRole role = DisplayRole::None;
 	QScreen *screen = nullptr;

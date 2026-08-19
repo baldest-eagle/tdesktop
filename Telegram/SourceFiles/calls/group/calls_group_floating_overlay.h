@@ -10,7 +10,7 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "base/object_ptr.h"
 
 #include <QtWidgets/QWidget>
-#include <QtGui/QShortcut>
+#include <QtWidgets/QShortcut>
 
 namespace Ui {
 class RpWidget;
