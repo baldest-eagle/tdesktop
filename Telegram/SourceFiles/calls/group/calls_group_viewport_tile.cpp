@@ -37,7 +37,8 @@ Viewport::VideoTile::VideoTile(
 , _peer(_track.row->peer())
 , _trackSize(std::move(trackSize))
 , _rtmp(endpoint.rtmp())
-, _self(self) {
+, _self(self)
+, _entryTime(crl::now()) {
 	Expects(_track.track != nullptr);
 
 	using namespace rpl::mappers;

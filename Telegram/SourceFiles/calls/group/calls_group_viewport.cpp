@@ -526,16 +526,24 @@ Viewport::Layout Viewport::countWide(int outerWidth, int outerHeight) const {
 		}
 	}
 
-	// Fill remaining slots with unpinned active tiles
+	// Fill remaining slots with unpinned active tiles sorted chronologically by entryTime
+	// (oldest in Slot 0 top-left, newest in bottom-right)
+	std::vector<not_null<VideoTile*>> unpinnedTiles;
 	for (const auto &tile : _tiles) {
 		const auto isPinned = ranges::contains(_pinnedEndpoints, tile->endpoint());
 		if (!isPinned) {
 			const auto video = tile.get();
 			const auto size = video->trackOrUserpicSize();
 			if (!size.isEmpty()) {
-				sizes.push_back(Geometry{ video, size });
+				unpinnedTiles.push_back(video);
 			}
 		}
+	}
+	std::sort(unpinnedTiles.begin(), unpinnedTiles.end(), [](not_null<VideoTile*> a, not_null<VideoTile*> b) {
+		return a->entryTime() < b->entryTime();
+	});
+	for (const auto video : unpinnedTiles) {
+		sizes.push_back(Geometry{ video.get(), video->trackOrUserpicSize() });
 	}
 	if (sizes.empty()) {
 		return result;

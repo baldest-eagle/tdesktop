@@ -1130,6 +1130,12 @@ public:
 	void peerListPressLeftToContextMenu(bool shown) override {
 		_content->pressLeftToContextMenu(shown);
 	}
+	void peerListSearchQueryChanged(const QString &query) {
+		if (_content) {
+			_content->searchQueryChanged(query);
+		}
+	}
+
 	bool peerListTrackRowPressFromGlobal(QPoint globalPosition) override {
 		return _content->trackRowPressFromGlobal(globalPosition);
 	}

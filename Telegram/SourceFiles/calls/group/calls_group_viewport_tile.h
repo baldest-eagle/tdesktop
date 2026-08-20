@@ -79,6 +79,9 @@ public:
 	[[nodiscard]] static QSize PausedVideoSize();
 
 	[[nodiscard]] bool screencast() const;
+	[[nodiscard]] crl::time entryTime() const {
+		return _entryTime;
+	}
 	void setGeometry(
 		QRect geometry,
 		TileAnimation animation = TileAnimation());
@@ -133,6 +136,7 @@ private:
 	bool _hidden = true;
 	bool _rtmp = false;
 	bool _self = false;
+	crl::time _entryTime = 0;
 	std::optional<VideoQuality> _quality;
 
 	rpl::lifetime _lifetime;

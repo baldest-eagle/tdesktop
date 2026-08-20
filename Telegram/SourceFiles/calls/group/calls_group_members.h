@@ -47,6 +47,8 @@ public:
 		Ui::GL::Backend backend);
 	~Members();
 
+	void searchByQuery(const QString &query);
+
 	[[nodiscard]] not_null<Viewport*> viewport() const;
 	[[nodiscard]] int desiredHeight() const;
 	[[nodiscard]] rpl::producer<int> desiredHeightValue() const override;

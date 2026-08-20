@@ -1785,6 +1785,10 @@ Members::~Members() {
 	_viewport = nullptr;
 }
 
+void Members::searchByQuery(const QString &query) {
+	peerListSearchQueryChanged(query);
+}
+
 auto Members::toggleMuteRequests() const
 -> rpl::producer<Group::MuteRequest> {
 	return _listController->toggleMuteRequests();
@@ -1969,6 +1973,21 @@ rpl::producer<int> Members::fullCountValue() const {
 
 void Members::setupList() {
 	_listController->setStyleOverrides(&st::groupCallMembersList);
+
+	// In-call username search bar at the top of the sidebar
+	auto searchWrap = _layout->add(
+		object_ptr<Ui::RpWidget>(_layout.get()));
+	auto searchField = Ui::CreateChild<Ui::InputField>(
+		searchWrap,
+		st::defaultInputField,
+		rpl::single(QStringLiteral("Search username...")));
+	searchWrap->resize(searchWrap->width(), searchField->height() + st::groupCallMembersTopSkip);
+	searchField->move(st::groupCallMembersMargin.left(), st::groupCallMembersTopSkip / 2);
+	searchField->changes(
+	) | rpl::on_next([=] {
+		searchByQuery(searchField->getLastText());
+	}, searchField->lifetime());
+
 	const auto addSkip = [&] {
 		const auto result = _layout->add(
 			object_ptr<Ui::FixedHeightWidget>(
