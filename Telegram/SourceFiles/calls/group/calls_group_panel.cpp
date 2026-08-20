@@ -2777,64 +2777,18 @@ void Panel::updateButtonsGeometry() {
 			forMessagesWidth,
 			forMessagesHeight);
 
-		toggle(_screenShare, !hidden && !rtmp && !messagesEnabled);
-		toggle(_message, !hidden && !rtmp && messagesEnabled);
-		if (!rtmp && !messagesEnabled) {
-			_screenShare->moveToLeft(left, buttonsTop);
-			left += _screenShare->width() + skip;
-		} else if (!rtmp) {
-			_wideMenu->moveToLeft(left, buttonsTop);
-			_settings->moveToLeft(left, buttonsTop);
-			left += _settings->width() + skip;
-		}
-
-		const auto wideMenuShown = _call->canManage()
-			|| _call->showChooseJoinAs()
-			|| (!rtmp && messagesEnabled); // Screen share there.
-		toggle(_settings, !hidden && !wideMenuShown);
-		toggle(_wideMenu, !hidden && wideMenuShown);
-
-		toggle(_video, !hidden && !rtmp);
-		if (!rtmp) {
-			_video->moveToLeft(left, buttonsTop);
-			left += _video->width() + skip;
-		} else {
-			_wideMenu->moveToLeft(left, buttonsTop);
-			_settings->moveToLeft(left, buttonsTop);
-			left += _settings->width() + skip;
-		}
-		toggle(_gridModeButton, !hidden && !rtmp);
-		if (!rtmp) {
-			_gridModeButton->moveToLeft(left, buttonsTop);
-			left += _gridModeButton->width() + skip;
-		}
-		toggle(_chatToggle, !hidden && !rtmp);
-		if (!rtmp) {
-			_chatToggle->moveToLeft(left, buttonsTop);
-			left += _chatToggle->width() + skip;
-		}
-		toggle(_mute, !hidden);
-		_mute->moveInner({ left + addSkip, muteTop });
-		left += muteSize + skip;
-		if (!rtmp && messagesEnabled) {
-			_message->moveToLeft(left, buttonsTop);
-			left += _message->width() + skip;
-		} else if (!rtmp) {
-			_wideMenu->moveToLeft(left, buttonsTop);
-			_settings->moveToLeft(left, buttonsTop);
-			left += _settings->width() + skip;
-		}
-		toggle(_hangup, !hidden);
-		_hangup->moveToLeft(left, buttonsTop);
-		left += _hangup->width();
+		// Unobstructed camera view: remove on-screen floating buttons (leave/message/settings/hangup/background)
+		toggle(_screenShare, false);
+		toggle(_message, false);
+		toggle(_wideMenu, false);
+		toggle(_settings, false);
+		toggle(_video, false);
+		toggle(_gridModeButton, false);
+		toggle(_chatToggle, false);
+		toggle(_mute, false);
+		toggle(_hangup, false);
 		if (_controlsBackgroundWide) {
-			const auto rect = QRect(
-				left - fullWidth,
-				buttonsTop,
-				fullWidth,
-				_hangup->height());
-			_controlsBackgroundWide->setGeometry(
-				rect.marginsAdded(st::groupCallControlsBackMargin));
+			_controlsBackgroundWide->hide();
 		}
 		if (_rtmpFull) {
 			refreshTitleGeometry();
@@ -3219,12 +3173,7 @@ void Panel::paint(QRect clip) {
 
 bool Panel::handleClose() {
 	if (_call) {
-		window()->hide();
-		if (Platform::IsWayland()) {
-			if (const auto handle = window()->windowHandle()) {
-				handle->destroy();
-			}
-		}
+		endCall();
 		return true;
 	}
 	return false;
