@@ -630,6 +630,19 @@ void Members::Controller::updateRow(
 		}
 		delegate()->peerListRefreshRows();
 	}
+	// Always keep user list along the side sorted alphabetically
+	delegate()->peerListSortRows([&](
+			const PeerListRow &a,
+			const PeerListRow &b) {
+		using State = Row::State;
+		const auto stateA = static_cast<const Row&>(a).state();
+		const auto stateB = static_cast<const Row&>(b).state();
+		const auto groupA = (stateA == State::Invited || stateA == State::Calling) ? 1 : 0;
+		const auto groupB = (stateB == State::Invited || stateB == State::Calling) ? 1 : 0;
+		const auto nameA = a.special() ? QString() : a.peer()->name();
+		const auto nameB = b.special() ? QString() : b.peer()->name();
+		return QString::compare(nameA, nameB, Qt::CaseInsensitive) < 0;
+	});
 	const auto reorder = [&] {
 		const auto count = reorderIfNonRealBefore;
 		if (count <= 0) {
