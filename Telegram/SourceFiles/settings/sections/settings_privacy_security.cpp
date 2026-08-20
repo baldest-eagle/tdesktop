@@ -1085,6 +1085,38 @@ void BuildTopPeersSection(SectionBuilder &builder) {
 	builder.addDividerText(tr::lng_settings_top_peers_about());
 }
 
+void BuildGhostModeSection(SectionBuilder &builder) {
+	const auto settings = Core::App().settings();
+
+	builder.addSkip();
+	builder.addSubsectionTitle({
+		.id = u"privacy/ghost_mode"_q,
+		.title = tr::lng_settings_ghost_mode(),
+		.keywords = { u"ghost"_q, u"mode"_q, u"read"_q, u"receipts"_q },
+	});
+
+	const auto toggle = builder.addButton({
+		.id = u"privacy/ghost_mode_toggle"_q,
+		.title = tr::lng_settings_ghost_mode(),
+		.st = &st::settingsButtonNoIcon,
+		.toggled = settings->ghostModeValue(),
+		.keywords = { u"ghost"_q, u"mode"_q, u"read"_q, u"receipts"_q },
+	});
+
+	if (toggle) {
+		toggle->toggledChanges(
+		) | rpl::filter([=](bool toggled) {
+			return toggled != settings->ghostMode();
+		}) | rpl::on_next([=](bool toggled) {
+			settings->setGhostMode(toggled);
+			Core::App().saveSettingsDelayed();
+		}, toggle->lifetime());
+	}
+
+	builder.addSkip();
+	builder.addDividerText(tr::lng_settings_ghost_mode_about());
+}
+
 void BuildSelfDestructionSection(
 		SectionBuilder &builder,
 		rpl::producer<> updateTrigger) {
@@ -1168,6 +1200,7 @@ void BuildPrivacySecuritySectionContent(SectionBuilder &builder) {
 	BuildBotsAndWebsitesSection(builder);
 	BuildConfirmationExtensions(builder);
 	BuildTopPeersSection(builder);
+	BuildGhostModeSection(builder);
 	BuildSelfDestructionSection(builder, trigger());
 }
 

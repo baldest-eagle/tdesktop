@@ -292,6 +292,7 @@ QByteArray Settings::serialize() const {
 		+ sizeof(qint32) // _hardwareAcceleratedVideo
 		+ sizeof(qint32) // _suggestAnimatedEmoji
 		+ sizeof(qint32) // _cornerReaction
+		+ sizeof(qint32) // _ghostMode
 		+ sizeof(qint32) // _translateButtonEnabled
 		+ sizeof(qint32) // skipLanguages count
 		+ (skipLanguages.size() * sizeof(quint64))
@@ -460,7 +461,8 @@ QByteArray Settings::serialize() const {
 			<< qint32(_hardwareAcceleratedVideo ? 1 : 0)
 			<< qint32(_suggestAnimatedEmoji ? 1 : 0)
 			<< qint32(_cornerReaction.current() ? 1 : 0)
-			<< qint32(_translateButtonEnabled ? 1 : 0);
+			<< qint32(_ghostMode.current() ? 1 : 0)
+			<< qint32(_translateButtonEnabled ? 1 : 0)
 
 		stream
 			<< qint32(skipLanguages.size());
@@ -629,6 +631,7 @@ void Settings::addFromSerialized(const QByteArray &serialized) {
 	qint32 suggestAnimatedEmoji = _suggestAnimatedEmoji ? 1 : 0;
 	qint32 cornerReply = _cornerReply.current() ? 1 : 0;
 	qint32 cornerReaction = _cornerReaction.current() ? 1 : 0;
+	qint32 ghostMode = _ghostMode.current() ? 1 : 0;
 	qint32 pullToNextChannel = _pullToNextChannel.current() ? 1 : 0;
 	qint32 chatFiltersTabsMode = qint32(_chatFiltersTabsMode.current());
 	qint32 legacySkipTranslationForLanguage = _translateButtonEnabled ? 1 : 0;
@@ -862,6 +865,9 @@ void Settings::addFromSerialized(const QByteArray &serialized) {
 	}
 	if (!stream.atEnd()) {
 		stream >> cornerReaction;
+	}
+	if (!stream.atEnd()) {
+		stream >> ghostMode;
 	}
 	if (!stream.atEnd()) {
 		stream >> legacySkipTranslationForLanguage;
@@ -1237,6 +1243,7 @@ void Settings::addFromSerialized(const QByteArray &serialized) {
 	_suggestAnimatedEmoji = (suggestAnimatedEmoji == 1);
 	_cornerReply = (cornerReply == 1);
 	_cornerReaction = (cornerReaction == 1);
+	_ghostMode = (ghostMode == 1);
 	_pullToNextChannel = (pullToNextChannel == 1);
 	{
 		using Mode = Ui::ChatsFiltersTabsMode;
