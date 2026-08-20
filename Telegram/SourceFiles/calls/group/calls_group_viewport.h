@@ -89,6 +89,8 @@ public:
 	void setGeometry(bool fullscreen, QRect geometry);
 	void resizeToWidth(int newWidth);
 	void setScrollTop(int scrollTop);
+	void setGridMode(bool grid);
+	void setSlotCount(int count);
 
 	void add(
 		const VideoEndpoint &endpoint,
@@ -103,6 +105,7 @@ public:
 	[[nodiscard]] int fullHeight() const;
 	[[nodiscard]] rpl::producer<int> fullHeightValue() const;
 	[[nodiscard]] rpl::producer<bool> pinToggled() const;
+	[[nodiscard]] rpl::variable<bool> gridModeValue() const;
 	[[nodiscard]] rpl::producer<VideoEndpoint> clicks() const;
 	[[nodiscard]] rpl::producer<VideoQualityRequest> qualityRequests() const;
 	[[nodiscard]] rpl::producer<bool> mouseInsideValue() const;
@@ -229,6 +232,9 @@ private:
 	Selection _selected;
 	Selection _pressed;
 	rpl::variable<bool> _mouseInside = false;
+
+	rpl::variable<bool> _gridMode = false;
+	rpl::variable<int> _slotCount = 0;
 
 	Ui::RpWidgetWrap * const _borrowed = nullptr;
 	QRect _borrowedGeometry;

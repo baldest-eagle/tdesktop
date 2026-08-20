@@ -943,6 +943,20 @@ rpl::producer<bool> Viewport::pinToggled() const {
 	return _pinToggles.events();
 }
 
+void Viewport::setGridMode(bool grid) {
+	_gridMode = grid;
+	updateTilesGeometry();
+}
+
+void Viewport::setSlotCount(int count) {
+	_slotCount = count;
+	updateTilesGeometry();
+}
+
+rpl::variable<bool> Viewport::gridModeValue() const {
+	return _gridMode;
+}
+
 rpl::producer<VideoEndpoint> Viewport::clicks() const {
 	return _clicks.events();
 }

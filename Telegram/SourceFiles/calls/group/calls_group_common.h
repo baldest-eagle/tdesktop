@@ -133,6 +133,7 @@ enum class PanelMode {
 	Default,
 	Wide,
 	VideoStream,
+	Grid,
 };
 
 enum class VideoQuality {

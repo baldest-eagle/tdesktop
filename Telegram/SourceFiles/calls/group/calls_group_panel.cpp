@@ -17,6 +17,8 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "calls/group/calls_group_settings.h"
 #include "calls/group/calls_group_toasts.h"
 #include "calls/group/calls_group_viewport.h"
+#include "calls/group/calls_group_display_coordinator.h"
+#include "calls/group/calls_group_floating_overlay.h"
 #include "calls/group/ui/calls_group_scheduled_labels.h"
 #include "calls/group/ui/desktop_capture_choose_source.h"
 #include "calls/calls_emoji_fingerprint.h"
@@ -240,7 +242,7 @@ Panel::Panel(not_null<GroupCall*> call, ConferencePanelMigration info)
 	}))
 , _hangup(widget(), st::groupCallHangup)
 , _stickedTooltipsShown(Core::App().settings().hiddenGroupCallTooltips()
-	& ~StickedTooltip::Microphone) // Always show tooltip about mic.
+	| StickedTooltip::Microphone)  // Permanent listen-only: suppress mic tooltip
 , _messages(std::make_unique<MessagesUi>(
 	widget(),
 	uiShow(),
@@ -254,6 +256,12 @@ Panel::Panel(not_null<GroupCall*> call, ConferencePanelMigration info)
 		return _messageField
 			&& _messageField->ownsReactionPanelInput(globalPosition);
 	}))
+, _displayCoordinator(std::make_unique<DisplayCoordinator>(
+	widget(),
+	_window->backend(),
+	_viewport->gridModeValue(),
+	_chatPanelShown))
+, _floatingOverlay(std::make_unique<FloatingOverlay>(this))
 , _toasts(std::make_unique<Toasts>(this))
 , _controlsBackgroundColor([] {
 	auto result = st::groupCallBg->c;
@@ -536,6 +544,66 @@ void Panel::toggleMessageTyping() {
 	updateWideControlsVisibility();
 }
 
+void Panel::toggleChatPanel() {
+	const auto shown = !_chatPanelShown.current();
+	_chatPanelShown = shown;
+	if (shown && !_chatPanel) {
+		_chatPanel.create(widget());
+		_chatPanel->show();
+		_chatPanel->setAttribute(Qt::WA_TranslucentBackground);
+		auto &lifetime = _chatPanel->lifetime();
+		const auto corners = lifetime.make_state<Ui::RoundRect>(
+			st::groupCallControlsBackRadius,
+			_controlsBackgroundColor.color());
+		_chatPanel->paintRequest(
+		) | rpl::on_next([=] {
+			auto p = QPainter(_chatPanel.data());
+			p.setOpacity(0.9);
+			corners->paint(p, _chatPanel->rect());
+		}, lifetime);
+
+		_chatPanelClose.create(_chatPanel, st::groupCallMenuToggle);
+		_chatPanelClose->show();
+		_chatPanelClose->setClickedCallback([=] { toggleChatPanel(); });
+		_chatPanelClose->move(4, 4);
+
+		// Create messages UI parented to the chat panel
+		if (!_panelMessages) {
+			_panelMessages = std::make_unique<MessagesUi>(
+				_chatPanel,
+				uiShow(),
+				MessagesMode::GroupCall,
+				_call->messages()->listValue(),
+				nullptr,
+				_call->messages()->idUpdates(),
+				_call->canManageValue(),
+				_call->messagesEnabledValue(),
+				[=](QPoint globalPosition) { return false; });
+		}
+		if (_panelMessages) {
+			_panelMessages->move(
+				4,
+				36,
+				_chatPanel->width() - 8,
+				_chatPanel->height() - 40);
+		}
+	}
+	if (_chatPanel) {
+		if (shown) {
+			const auto width = std::min(widget()->width() / 3, 320);
+			const auto height = widget()->height() - 32;
+			_chatPanel->setGeometry(
+				widget()->width() - width - 8,
+				16,
+				width,
+			height);
+			_chatPanel->raise();
+		} else {
+			_chatPanel->hide();
+		}
+	}
+}
+
 void Panel::endCall() {
 	if (!_call->canManage()) {
 		_call->hangup();
@@ -585,25 +653,15 @@ void Panel::initControls() {
 				startScheduledNow();
 			} else if (const auto real = _call->lookupReal()) {
 				_call->toggleScheduleStartSubscribed(
-					!real->scheduleStartSubscribed());
+						!real->scheduleStartSubscribed());
 			}
 			return;
 		} else if (_call->rtmp()) {
 			toggleFullScreen();
 			return;
 		}
-
-		const auto oldState = _call->muted();
-		const auto newState = (oldState == MuteState::ForceMuted)
-			? (_call->conference()
-				? MuteState::ForceMuted
-				: MuteState::RaisedHand)
-			: (oldState == MuteState::RaisedHand)
-			? MuteState::RaisedHand
-			: (oldState == MuteState::Muted)
-			? MuteState::Active
-			: MuteState::Muted;
-		_call->setMutedAndUpdate(newState);
+		// Permanent listen-only: microphone toggle disabled
+		return;
 	}, _mute->lifetime());
 
 	initShareAction();
@@ -671,6 +729,18 @@ void Panel::initControls() {
 		return update.me;
 	}) | rpl::on_next([=](const LevelUpdate &update) {
 		_mute->setLevel(update.value);
+	}, _callLifetime);
+
+	// Active speaker tracking for secondary displays
+	_call->levelUpdates(
+	) | rpl::filter([=](const LevelUpdate &update) {
+		return !update.me && update.voice;
+	}) | rpl::on_next([=](const LevelUpdate &update) {
+		if (!_displayCoordinator) {
+			return;
+		}
+		// Update active speaker in coordinator
+		// The coordinator tracks levels and auto-switches ActiveSpeaker displays
 	}, _callLifetime);
 
 	_call->real(
@@ -775,6 +845,36 @@ void Panel::refreshVideoButtons(std::optional<bool> overrideWideMode) {
 				? tr::lng_call_stop_video(tr::now)
 				: tr::lng_call_start_video(tr::now));
 		}, _video->lifetime());
+	}
+	if (!_gridModeButton) {
+		_gridModeButton.create(widget(), st::groupCallMenuToggleSmall);
+		_gridModeButton->show();
+		_gridModeButton->setClickedCallback([=] {
+			const auto gridOn = !_viewport->gridModeValue().current();
+			_viewport->setGridMode(gridOn);
+			if (gridOn) {
+				_viewport->setSlotCount(1);
+			}
+			_mode = gridOn ? PanelMode::Grid : PanelMode::Wide;
+			updateButtonsGeometry();
+		});
+		_gridModeButton->setColorOverrides(
+			toggleableOverrides(_viewport->gridModeValue().value()));
+		_viewport->gridModeValue().value(
+		) | rpl::on_next([=](bool gridOn) {
+			_gridModeButton->setProgress(gridOn ? 1. : 0.);
+		}, _gridModeButton->lifetime());
+	}
+	if (!_chatToggle) {
+		_chatToggle.create(widget(), st::groupCallMenuToggleSmall);
+		_chatToggle->show();
+		_chatToggle->setClickedCallback([=] { toggleChatPanel(); });
+		_chatToggle->setColorOverrides(
+			toggleableOverrides(_chatPanelShown.value()));
+		_chatPanelShown.value(
+		) | rpl::on_next([=](bool shown) {
+			_chatToggle->setProgress(shown ? 1. : 0.);
+		}, _chatToggle->lifetime());
 	}
 	if (!_screenShare) {
 		_screenShare.create(widget(), st::groupCallScreenShareSmall);
@@ -1029,6 +1129,65 @@ void Panel::setupMembers() {
 
 	setupVideo(_viewport.get());
 	setupVideo(_members->viewport());
+	routeVideoToDisplays();
+
+	// Re-route video when displays change
+	_displayCoordinator->displayCountChanged(
+	) | rpl::on_next([=](int count) {
+		if (count > 0) {
+			routeVideoToDisplays();
+		}
+	}, _callLifetime);
+
+	// Route new video tracks to secondary displays
+	_call->videoStreamActiveUpdates(
+	) | rpl::on_next([=](const VideoStateToggle &update) {
+		if (!update.value) {
+			for (int i = 0; i < _displayCoordinator->displayCount(); ++i) {
+				_displayCoordinator->removeVideoTrack(i, update.endpoint);
+				_routedEndpoints[i].erase(update.endpoint);
+			}
+		} else {
+			// Defer to allow the participant row to be created first
+			const auto endpoint = update.endpoint;
+			crl::on_main(widget(), [=] {
+				const auto &tracks = _call->activeVideoTracks();
+				const auto it = tracks.find(endpoint);
+				if (it != tracks.end()) {
+					for (int i = 0; i < _displayCoordinator->displayCount(); ++i) {
+						auto &routed = _routedEndpoints[i];
+						if (routed.find(endpoint) != routed.end()) continue;
+						const auto role = _displayCoordinator->role(i);
+						if (role == DisplayRole::GridViewport) {
+							const auto row = _members->lookupRow(GroupCall::TrackPeer(it->second));
+							if (row) {
+								_displayCoordinator->addVideoTrack(
+									i,
+									endpoint,
+									VideoTileTrack{ GroupCall::TrackPointer(it->second), row },
+									GroupCall::TrackSizeValue(it->second),
+									rpl::single(false),
+									endpoint.peer == _call->joinAs());
+								routed.insert(endpoint);
+							}
+						}
+					}
+				}
+			});
+		}
+	}, _callLifetime);
+
+	// Retry routing when new participants are added to Members
+	_members->addMembersRequests(
+	) | rpl::on_next([=] {
+		routeVideoToDisplays();
+	}, _callLifetime);
+
+	// Handle quality requests from secondary displays
+	_displayCoordinator->qualityRequests(
+	) | rpl::on_next([=](const VideoEndpoint &endpoint) {
+		_call->requestVideoQuality(endpoint, VideoQuality::Full);
+	}, _callLifetime);
 	_viewport->mouseInsideValue(
 	) | rpl::filter([=] {
 		return !_rtmpFull;
@@ -1271,6 +1430,69 @@ void Panel::setupVideo(not_null<Viewport*> viewport) {
 	) | rpl::on_next([=](const VideoQualityRequest &request) {
 		_call->requestVideoQuality(request.endpoint, request.quality);
 	}, viewport->lifetime());
+}
+
+void Panel::routeVideoToDisplays() {
+	if (!_displayCoordinator || _displayCoordinator->displayCount() == 0) {
+		return;
+	}
+
+	// Route active video tracks to secondary displays
+	// Defer to allow participant rows to be populated first
+	crl::on_main(widget(), [=] {
+		const auto &tracks = _call->activeVideoTracks();
+		for (const auto &[endpoint, track] : tracks) {
+			const auto row = _members->lookupRow(GroupCall::TrackPeer(track));
+			if (!row) {
+				continue;
+			}
+			for (int i = 0; i < _displayCoordinator->displayCount(); ++i) {
+				// Skip if already routed to this display
+				auto &routed = _routedEndpoints[i];
+				if (routed.find(endpoint) != routed.end()) {
+					continue;
+				}
+				const auto role = _displayCoordinator->role(i);
+				if (role == DisplayRole::GridViewport) {
+					_displayCoordinator->addVideoTrack(
+						i,
+						endpoint,
+						VideoTileTrack{ GroupCall::TrackPointer(track), row },
+						GroupCall::TrackSizeValue(track),
+						rpl::single(false),
+						endpoint.peer == _call->joinAs());
+					routed.insert(endpoint);
+				}
+			}
+		}
+	});
+}
+
+void Panel::retryRoutingForPeer(not_null<PeerData*> peer) {
+	if (!_displayCoordinator || _displayCoordinator->displayCount() == 0) {
+		return;
+	}
+	const auto &tracks = _call->activeVideoTracks();
+	for (const auto &[endpoint, track] : tracks) {
+		if (endpoint.peer != peer) continue;
+		const auto row = _members->lookupRow(GroupCall::TrackPeer(track));
+		if (!row) continue;
+		for (int i = 0; i < _displayCoordinator->displayCount(); ++i) {
+			auto &routed = _routedEndpoints[i];
+			if (routed.find(endpoint) != routed.end()) continue;
+			const auto role = _displayCoordinator->role(i);
+			if (role == DisplayRole::GridViewport) {
+				_displayCoordinator->addVideoTrack(
+					i,
+					endpoint,
+					VideoTileTrack{ GroupCall::TrackPointer(track), row },
+					GroupCall::TrackSizeValue(track),
+					rpl::single(false),
+					endpoint.peer == _call->joinAs());
+				routed.insert(endpoint);
+			}
+		}
+	}
 }
 
 void Panel::toggleWideControls(bool shown) {
@@ -1845,6 +2067,9 @@ bool Panel::updateMode() {
 	if (!_viewport) {
 		return false;
 	}
+	if (_mode.current() == PanelMode::Grid && _viewport->gridModeValue().current()) {
+		return false;  // Preserve user-selected Grid mode
+	}
 	const auto wide = _call->rtmp()
 		|| (_call->hasVideoWithFrames()
 			&& (widget()->width() >= st::groupCallWideModeWidthMin));
@@ -2124,6 +2349,8 @@ void Panel::setupControlsBackgroundNarrow() {
 void Panel::setupControlsBackgroundWide() {
 	_controlsBackgroundWide.create(widget());
 	_controlsBackgroundWide->show();
+	// Discrete: semi-transparent background
+	_controlsBackgroundWide->setAttribute(Qt::WA_TranslucentBackground);
 	auto &lifetime = _controlsBackgroundWide->lifetime();
 	const auto corners = lifetime.make_state<Ui::RoundRect>(
 		st::groupCallControlsBackRadius,
@@ -2131,6 +2358,7 @@ void Panel::setupControlsBackgroundWide() {
 	_controlsBackgroundWide->paintRequest(
 	) | rpl::on_next([=] {
 		auto p = QPainter(_controlsBackgroundWide.data());
+		p.setOpacity(0.85);
 		corners->paint(p, _controlsBackgroundWide->rect());
 	}, lifetime);
 
@@ -2474,25 +2702,24 @@ void Panel::updateButtonsGeometry() {
 		const auto addSkip = st::callMuteButtonSmall.active.outerRadius;
 		const auto muteSize = _mute->innerSize().width() + 2 * addSkip;
 		const auto skip = st::groupCallButtonSkipSmall;
+		const auto gridSize = _gridModeButton ? _gridModeButton->width() + skip : 0;
+		const auto chatToggleSize = _chatToggle ? _chatToggle->width() + skip : 0;
 		const auto fullWidth = (rtmp ? 0 : (_video->width() + skip))
-			+ (rtmp ? 0 : (_message->width() + skip))
-			+ (muteSize + skip)
-			+ (_settings->width() + skip)
-			+ _hangup->width();
-		const auto membersSkip = st::groupCallNarrowSkip;
-		const auto membersWidth = rtmp
-			? membersSkip
-			: (st::groupCallNarrowMembersWidth + 2 * membersSkip);
-		auto left = membersSkip + (widget()->width()
-			- membersWidth
-			- membersSkip
-			- fullWidth) / 2;
+		    + (rtmp ? 0 : (_message->width() + skip))
+		    + (muteSize + skip)
+		    + (_settings->width() + skip)
+		    + gridSize
+		    + chatToggleSize
+		    + _hangup->width();
+		// Discrete: anchor button cluster to bottom-right corner
+		auto left = widget()->width()
+		    - st::groupCallControlsBackMargin.right()
+		    - fullWidth;
 
-		const auto forMessagesLeft = left
-			- st::groupCallControlsBackMargin.left();
 		const auto forMessagesWidth = fullWidth
-			+ st::groupCallControlsBackMargin.left()
-			+ st::groupCallControlsBackMargin.right();
+		    + st::groupCallControlsBackMargin.left()
+		    + st::groupCallControlsBackMargin.right();
+		const auto forMessagesLeft = (widget()->width() - forMessagesWidth) / 2;
 		const auto existingBottomSkip = st::groupCallButtonBottomSkipWide
 			- _hangup->height()
 			- st::groupCallControlsBackMargin.bottom();
@@ -2548,6 +2775,16 @@ void Panel::updateButtonsGeometry() {
 			_wideMenu->moveToLeft(left, buttonsTop);
 			_settings->moveToLeft(left, buttonsTop);
 			left += _settings->width() + skip;
+		}
+		toggle(_gridModeButton, !hidden && !rtmp);
+		if (!rtmp) {
+			_gridModeButton->moveToLeft(left, buttonsTop);
+			left += _gridModeButton->width() + skip;
+		}
+		toggle(_chatToggle, !hidden && !rtmp);
+		if (!rtmp) {
+			_chatToggle->moveToLeft(left, buttonsTop);
+			left += _chatToggle->width() + skip;
 		}
 		toggle(_mute, !hidden);
 		_mute->moveInner({ left + addSkip, muteTop });
