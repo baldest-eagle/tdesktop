@@ -1478,13 +1478,13 @@ void Panel::promptPinTargetScreen(const VideoEndpoint &endpoint) {
 				QStringLiteral("Choose target screen for ") + endpoint.peer->name() + QStringLiteral(":"),
 				st::groupCallBoxLabel));
 
-		box->addButton(QStringLiteral("Screen 1 (Stage Window)"), [=] {
+		box->addButton(rpl::single(QStringLiteral("Screen 1 (Stage Window)")), [=] {
 			box->closeBox();
 			if (_displayCoordinator) {
 				_displayCoordinator->pinToScreen(
 					0,
 					endpoint,
-					VideoTileTrack{ track, row },
+					VideoTileTrack{ GroupCall::TrackPointer(it->second), row },
 					GroupCall::TrackSizeValue(it->second),
 					isSelf);
 			}
@@ -1494,13 +1494,13 @@ void Panel::promptPinTargetScreen(const VideoEndpoint &endpoint) {
 			}
 		});
 
-		box->addButton(QStringLiteral("Screen 2 (2nd Monitor)"), [=] {
+		box->addButton(rpl::single(QStringLiteral("Screen 2 (2nd Monitor)")), [=] {
 			box->closeBox();
 			if (_displayCoordinator) {
 				_displayCoordinator->pinToScreen(
 					1,
 					endpoint,
-					VideoTileTrack{ track, row },
+					VideoTileTrack{ GroupCall::TrackPointer(it->second), row },
 					GroupCall::TrackSizeValue(it->second),
 					isSelf);
 			}
