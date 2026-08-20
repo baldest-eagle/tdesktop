@@ -857,13 +857,14 @@ void Panel::refreshVideoButtons(std::optional<bool> overrideWideMode) {
 		}, _video->lifetime());
 	}
 	if (!_gridModeButton) {
-		_gridModeButton.create(widget(), st::groupCallMenuToggleSmall);
+		_gridModeButton.create(widget(), st::groupCallScreenShareSmall);
 		_gridModeButton->show();
+		_gridModeButton->setAccessibleName(QStringLiteral("Grid View (1x1, 2x2, 3x3)"));
 		_gridModeButton->setClickedCallback([=] {
 			const auto gridOn = !_viewport->gridModeValue().current();
 			_viewport->setGridMode(gridOn);
 			if (gridOn) {
-				_viewport->setSlotCount(1);
+				_viewport->setSlotCount(4);
 			}
 			_mode = gridOn ? PanelMode::Grid : PanelMode::Wide;
 			updateButtonsGeometry();
@@ -876,9 +877,16 @@ void Panel::refreshVideoButtons(std::optional<bool> overrideWideMode) {
 		}, _gridModeButton->lifetime());
 	}
 	if (!_chatToggle) {
-		_chatToggle.create(widget(), st::groupCallMenuToggleSmall);
+		_chatToggle.create(widget(), st::groupCallMessageSmall);
 		_chatToggle->show();
-		_chatToggle->setClickedCallback([=] { toggleChatPanel(); });
+		_chatToggle->setAccessibleName(QStringLiteral("Toggle Floating Chat"));
+		_chatToggle->setClickedCallback([=] {
+			if (_floatingOverlay) {
+				_floatingOverlay->toggle();
+			} else {
+				toggleChatPanel();
+			}
+		});
 		_chatToggle->setColorOverrides(
 			toggleableOverrides(_chatPanelShown.value()));
 		_chatPanelShown.value(
