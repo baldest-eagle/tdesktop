@@ -104,7 +104,7 @@ callButtonLabel: FlatLabel(defaultFlatLabel) {
 	maxHeight: 16px;
 }
 
-callAnswer: CallButton {
+callAnswer: IconButton(callButton) {
 	button: IconButton(callButton) {
 		icon: icon {{ "calls/call_answer", callIconFg }};
 		ripple: RippleAnimation(defaultRippleAnimation) {
@@ -119,7 +119,7 @@ callAnswer: CallButton {
 	outerBg: callAnswerBgOuter;
 	label: callButtonLabel;
 }
-callStartVideo: CallButton(callAnswer) {
+callStartVideo: IconButton(callAnswer) {
 	button: IconButton(callButton) {
 		icon: icon {{ "calls/call_camera_active", callIconFg }};
 		ripple: RippleAnimation(defaultRippleAnimation) {
@@ -127,44 +127,44 @@ callStartVideo: CallButton(callAnswer) {
 		}
 	}
 }
-callHangup: CallButton(callAnswer) {
+callHangup: IconButton(callAnswer) {
 	button: IconButton(callButton) {
 		icon: icon {{ "calls/call_discard", callIconFg }};
 		ripple: RippleAnimation(defaultRippleAnimation) {
 			color: callHangupRipple;
 		}
 	}
-	bg: callHangupBg;
-	outerBg: callHangupBg;
 }
-callCancel: CallButton(callAnswer) {
+callCancel: IconButton(callAnswer) {
 	button: IconButton(callButton) {
 		icon: icon {{ "calls/call_cancel", callIconFgActive }};
 		ripple: RippleAnimation(defaultRippleAnimation) {
-			color: callIconActiveRipple;
+			color: callCancelRipple;
 		}
 	}
-	bg: callIconBgActive;
-	outerBg: callIconBgActive;
 }
-callMicrophoneMute: CallButton(callAnswer) {
+callMicrophoneMute: IconButton(callAnswer) {
 	button: IconButton(callButton) {
-		icon: icon {{ "calls/call_record_active", callIconFg }};
+		icon: icon {{ "calls/call_mute", callIconFg }};
 		ripple: RippleAnimation(defaultRippleAnimation) {
 			color: callMuteRipple;
 		}
 	}
-	bg: callIconBg;
-	outerBg: callMuteRipple;
-	cornerButtonPosition: point(40px, 4px);
-	cornerButtonBorder: 2px;
 }
-callMicrophoneUnmute: CallButton(callMicrophoneMute) {
+callMicrophoneUnmute: IconButton(callMicrophoneMute) {
+}
+callCameraMute: IconButton(callMicrophoneMute) {
+}
+callCameraUnmute: IconButton(callMicrophoneUnmute) {
+}
+callAddPeople: IconButton(callAnswer) {
 	button: IconButton(callButton) {
-		icon: icon {{ "calls/call_record_muted", callIconFgActive }};
+		icon: icon {{ "calls/call_add_user", callIconFg }};
 		ripple: RippleAnimation(defaultRippleAnimation) {
-			color: callIconActiveRipple;
+			color: callAddPeopleRipple;
 		}
+	}
+}
 	}
 	bg: callIconBgActive;
 }
