@@ -20,18 +20,18 @@ namespace Storage {
 namespace {
 
 constexpr auto kKillSessionTimeout = 15 * crl::time(1000);
-constexpr auto kStartWaitedInSession = 4 * kDownloadPartSize;
-constexpr auto kMaxWaitedInSession = 16 * kDownloadPartSize;
-constexpr auto kStartSessionsCount = 1;
-constexpr auto kMaxSessionsCount = 8;
+constexpr auto kStartWaitedInSession = 8 * kDownloadPartSize;
+constexpr auto kMaxWaitedInSession = 32 * kDownloadPartSize;
+constexpr auto kStartSessionsCount = 4;
+constexpr auto kMaxSessionsCount = 16;
 constexpr auto kMaxTrackedSessionRemoves = 64;
-constexpr auto kRetryAddSessionTimeout = 8 * crl::time(1000);
-constexpr auto kRetryAddSessionSuccesses = 3;
+constexpr auto kRetryAddSessionTimeout = 4 * crl::time(1000);
+constexpr auto kRetryAddSessionSuccesses = 2;
 constexpr auto kMaxTrackedSuccesses = kRetryAddSessionSuccesses
 	* kMaxTrackedSessionRemoves;
 constexpr auto kRemoveSessionAfterTimeouts = 4;
-constexpr auto kResetDownloadPrioritiesTimeout = crl::time(200);
-constexpr auto kBadRequestDurationThreshold = 8 * crl::time(1000);
+constexpr auto kResetDownloadPrioritiesTimeout = crl::time(100);
+constexpr auto kBadRequestDurationThreshold = 6 * crl::time(1000);
 
 // Each (session remove by timeouts) we wait for time:
 // kRetryAddSessionTimeout * max(removesCount, kMaxTrackedSessionRemoves)

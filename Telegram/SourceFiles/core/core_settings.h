@@ -781,6 +781,19 @@ public:
 		return _workMode.changes();
 	}
 
+	void setGhostMode(bool value) {
+		_ghostMode = value;
+	}
+	[[nodiscard]] bool ghostMode() const {
+		return _ghostMode.current();
+	}
+	[[nodiscard]] rpl::producer<bool> ghostModeValue() const {
+		return _ghostMode.value();
+	}
+	[[nodiscard]] rpl::producer<bool> ghostModeChanges() const {
+		return _ghostMode.changes();
+	}
+
 	[[nodiscard]] const std::vector<RecentEmoji> &recentEmoji() const;
 	void incrementRecentEmoji(RecentEmojiId id);
 	void hideRecentEmoji(RecentEmojiId id);
@@ -1137,6 +1150,7 @@ private:
 	rpl::variable<bool> _cornerReaction = true;
 	rpl::variable<bool> _pullToNextChannel = true;
 	rpl::variable<bool> _spellcheckerEnabled = true;
+	rpl::variable<bool> _ghostMode = false;
 	PlaybackSpeed _videoPlaybackSpeed;
 	rpl::variable<PlaybackSpeed> _voicePlaybackSpeed;
 	rpl::variable<PlaybackSpeed> _audioPlaybackSpeed;
