@@ -64,7 +64,18 @@ public:
 	void showDisplay(int displayIndex);
 	void hideDisplay(int displayIndex);
 
-	// Video routing
+	// Video routing & Pinning Stage
+	void pinToScreen(
+		int screenIndex,
+		const VideoEndpoint &endpoint,
+		const VideoTileTrack &track,
+		rpl::producer<QSize> trackSize,
+		bool self);
+	void unpinFromScreen(int screenIndex, const VideoEndpoint &endpoint);
+	[[nodiscard]] bool isPinnedOnScreen(int screenIndex, const VideoEndpoint &endpoint) const;
+	[[nodiscard]] int pinnedCount(int screenIndex) const;
+	void ensureStageWindow(int screenIndex);
+
 	void addVideoTrack(
 		int displayIndex,
 		const VideoEndpoint &endpoint,

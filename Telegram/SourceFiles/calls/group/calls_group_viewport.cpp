@@ -556,7 +556,11 @@ Viewport::Layout Viewport::countWide(int outerWidth, int outerHeight) const {
 		? 2
 		: (slotConstraint == 9)
 		? 3
-		: 0;
+		: (count == 1)
+		? 1
+		: (count <= 4)
+		? 2
+		: 3;
 
 	if (fixedGridDim > 0) {
 		const auto cols = fixedGridDim;
@@ -565,6 +569,15 @@ Viewport::Layout Viewport::countWide(int outerWidth, int outerHeight) const {
 		const auto visibleCount = std::min(count, maxVisible);
 		const auto cellW = (outerWidth - (cols - 1) * skip) / float64(cols);
 		const auto cellH = (outerHeight - (rows - 1) * skip) / float64(rows);
+
+		// Special case: 2 feeds -> 50/50 split across the screen
+		if (count == 2 && slotConstraint == 0) {
+			const auto halfW = (outerWidth - skip) / 2;
+			sizes[0].columns = sizes[0].rows = { 0, 0, halfW, outerHeight };
+			sizes[1].columns = sizes[1].rows = { halfW + skip, 0, halfW, outerHeight };
+			result.useColumns = true;
+			return result;
+		}
 
 		for (auto i = 0; i != count; ++i) {
 			auto &geometry = sizes[i];

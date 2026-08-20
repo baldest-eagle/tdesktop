@@ -213,6 +213,67 @@ void DisplayCoordinator::hideDisplay(int displayIndex) {
 	}
 }
 
+void DisplayCoordinator::ensureStageWindow(int screenIndex) {
+	if (_displays.find(screenIndex) != _displays.end()) {
+		return;
+	}
+	const auto app = qobject_cast<QGuiApplication*>(QGuiApplication::instance());
+	if (!app) {
+		return;
+	}
+	const auto screens = app->screens();
+	if (screenIndex >= 0 && screenIndex < screens.size()) {
+		createDisplayWindow(screenIndex, screens[screenIndex]);
+	} else if (!screens.empty()) {
+		createDisplayWindow(screenIndex, screens.front());
+	}
+}
+
+void DisplayCoordinator::pinToScreen(
+		int screenIndex,
+		const VideoEndpoint &endpoint,
+		const VideoTileTrack &track,
+		rpl::producer<QSize> trackSize,
+		bool self) {
+	ensureStageWindow(screenIndex);
+	auto it = _displays.find(screenIndex);
+	if (it == _displays.end() || !it->second.viewport) {
+		return;
+	}
+	_routedEndpoints[screenIndex].insert(endpoint);
+	it->second.viewport->add(
+		endpoint,
+		track,
+		std::move(trackSize),
+		rpl::single(true),
+		self);
+	it->second.viewport->togglePin(endpoint, true);
+	showDisplay(screenIndex);
+}
+
+void DisplayCoordinator::unpinFromScreen(int screenIndex, const VideoEndpoint &endpoint) {
+	auto it = _displays.find(screenIndex);
+	if (it == _displays.end() || !it->second.viewport) {
+		return;
+	}
+	_routedEndpoints[screenIndex].erase(endpoint);
+	it->second.viewport->togglePin(endpoint, false);
+	it->second.viewport->remove(endpoint);
+}
+
+bool DisplayCoordinator::isPinnedOnScreen(int screenIndex, const VideoEndpoint &endpoint) const {
+	auto it = _routedEndpoints.find(screenIndex);
+	if (it == _routedEndpoints.end()) {
+		return false;
+	}
+	return it->second.find(endpoint) != it->second.end();
+}
+
+int DisplayCoordinator::pinnedCount(int screenIndex) const {
+	auto it = _routedEndpoints.find(screenIndex);
+	return (it != _routedEndpoints.end()) ? int(it->second.size()) : 0;
+}
+
 void DisplayCoordinator::addVideoTrack(
 		int displayIndex,
 		const VideoEndpoint &endpoint,

@@ -1430,32 +1430,89 @@ void Panel::setupVideo(not_null<Viewport*> viewport) {
 	) | rpl::on_next([=](bool pinned) {
 		const auto target = _call->videoEndpointLarge();
 		if (target) {
-			viewport->togglePin(target, pinned);
+			if (pinned) {
+				promptPinTargetScreen(target);
+			} else {
+				if (_displayCoordinator) {
+					_displayCoordinator->unpinFromScreen(0, target);
+					_displayCoordinator->unpinFromScreen(1, target);
+				}
+				_viewport->togglePin(target, false);
+			}
 		}
-		_call->pinVideoEndpoint(pinned ? target : VideoEndpoint{});
 	}, viewport->lifetime());
 
 	viewport->clicks(
 	) | rpl::on_next([=](VideoEndpoint &&endpoint) {
-		if (_viewport && _viewport->gridModeValue().current()) {
-			// In grid mode: toggle pinning directly on click
-			const auto currentlyPinned = _viewport->isPinned(endpoint);
-			_viewport->togglePin(endpoint, !currentlyPinned);
-			return;
-		}
-		if (_call->videoEndpointLarge() == endpoint) {
-			_call->showVideoEndpointLarge({});
-		} else if (_call->videoEndpointPinned()) {
-			_call->pinVideoEndpoint(std::move(endpoint));
-		} else {
-			_call->showVideoEndpointLarge(std::move(endpoint));
-		}
+		promptPinTargetScreen(endpoint);
 	}, viewport->lifetime());
 
 	viewport->qualityRequests(
 	) | rpl::on_next([=](const VideoQualityRequest &request) {
 		_call->requestVideoQuality(request.endpoint, request.quality);
 	}, viewport->lifetime());
+}
+
+void Panel::promptPinTargetScreen(const VideoEndpoint &endpoint) {
+	if (!endpoint) {
+		return;
+	}
+	const auto &tracks = _call->activeVideoTracks();
+	const auto it = tracks.find(endpoint);
+	if (it == tracks.end()) {
+		return;
+	}
+	const auto row = _members ? _members->lookupRow(GroupCall::TrackPeer(it->second)) : nullptr;
+	if (!row) {
+		return;
+	}
+
+	const auto track = it->second.get();
+	const auto isSelf = (endpoint.peer == _call->joinAs());
+
+	auto box = Box([=](not_null<Ui::GenericBox*> box) {
+		box->setTitle(rpl::single(QStringLiteral("Pin Camera to Screen")));
+		box->addRow(
+			object_ptr<Ui::FlatLabel>(
+				box.get(),
+				QStringLiteral("Choose target screen for ") + endpoint.peer->name() + QStringLiteral(":"),
+				st::groupCallBoxLabel));
+
+		box->addButton(QStringLiteral("Screen 1 (Stage Window)"), [=] {
+			box->closeBox();
+			if (_displayCoordinator) {
+				_displayCoordinator->pinToScreen(
+					0,
+					endpoint,
+					VideoTileTrack{ track, row },
+					GroupCall::TrackSizeValue(it->second),
+					isSelf);
+			}
+			// Remove from main grid view
+			if (_viewport) {
+				_viewport->remove(endpoint);
+			}
+		});
+
+		box->addButton(QStringLiteral("Screen 2 (2nd Monitor)"), [=] {
+			box->closeBox();
+			if (_displayCoordinator) {
+				_displayCoordinator->pinToScreen(
+					1,
+					endpoint,
+					VideoTileTrack{ track, row },
+					GroupCall::TrackSizeValue(it->second),
+					isSelf);
+			}
+			// Remove from main grid view
+			if (_viewport) {
+				_viewport->remove(endpoint);
+			}
+		});
+
+		box->addButton(tr::lng_cancel(), [=] { box->closeBox(); });
+	});
+	uiShow()->showBox(std::move(box));
 }
 
 void Panel::routeVideoToDisplays() {

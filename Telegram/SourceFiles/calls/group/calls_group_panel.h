@@ -182,6 +182,8 @@ private:
 
 	void endCall();
 
+	void promptPinTargetScreen(const VideoEndpoint &endpoint);
+
 	void showMainMenu();
 	void chooseJoinAs();
 	void chooseShareScreenSource();
