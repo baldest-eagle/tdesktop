@@ -101,7 +101,9 @@ private:
 
 	// Active speaker tracking
 	PeerData *_activeSpeaker = nullptr;
+	std::map<not_null<PeerData*>, VideoEndpoint> _peerToEndpoints;
 	double _speakerThreshold = 0.05;
+	int _speakerHoldFrames = 0;
 
 };
 

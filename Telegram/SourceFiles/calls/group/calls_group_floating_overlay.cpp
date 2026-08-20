@@ -91,10 +91,26 @@ QWidget::mouseMoveEvent(event);
 }
 
 void FloatingOverlay::mouseReleaseEvent(QMouseEvent *event) {
-if (event->button() == Qt::LeftButton) {
-_dragging = false;
+	if (event->button() == Qt::LeftButton) {
+		_dragging = false;
+	}
+	QWidget::mouseReleaseEvent(event);
 }
-QWidget::mouseReleaseEvent(event);
+
+void FloatingOverlay::wheelEvent(QWheelEvent *event) {
+	if (event->modifiers() & Qt::ControlModifier) {
+		const auto delta = event->angleDelta().y();
+		if (delta > 0) {
+			_opacity = std::min(1.0f, _opacity + 0.05f);
+		} else if (delta < 0) {
+			_opacity = std::max(0.2f, _opacity - 0.05f);
+		}
+		setWindowOpacity(_opacity);
+		update();
+		event->accept();
+		return;
+	}
+	QWidget::wheelEvent(event);
 }
 
 void FloatingOverlay::paintEvent(QPaintEvent *event) {

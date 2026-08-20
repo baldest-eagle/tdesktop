@@ -326,6 +326,11 @@ void Viewport::remove(const VideoEndpoint &endpoint) {
 		prepareLargeChangeAnimation();
 		_large = nullptr;
 	}
+	_pinnedEndpoints.erase(
+		std::remove(_pinnedEndpoints.begin(), _pinnedEndpoints.end(), endpoint),
+		_pinnedEndpoints.end());
+	_pinnedSlots.erase(endpoint);
+
 	if (_selected.tile == removing) {
 		setSelected({});
 	}
@@ -506,11 +511,30 @@ Viewport::Layout Viewport::countWide(int outerWidth, int outerHeight) const {
 	auto result = Layout{ .outer = QSize(outerWidth, outerHeight) };
 	auto &sizes = result.list;
 	sizes.reserve(_tiles.size());
+
+	// Allocate pinned tiles to fixed leading slots first
+	for (const auto &pinned : _pinnedEndpoints) {
+		for (const auto &tile : _tiles) {
+			if (tile->endpoint() == pinned) {
+				const auto video = tile.get();
+				const auto size = video->trackOrUserpicSize();
+				if (!size.isEmpty()) {
+					sizes.push_back(Geometry{ video, size });
+				}
+				break;
+			}
+		}
+	}
+
+	// Fill remaining slots with unpinned active tiles
 	for (const auto &tile : _tiles) {
-		const auto video = tile.get();
-		const auto size = video->trackOrUserpicSize();
-		if (!size.isEmpty()) {
-			sizes.push_back(Geometry{ video, size });
+		const auto isPinned = ranges::contains(_pinnedEndpoints, tile->endpoint());
+		if (!isPinned) {
+			const auto video = tile.get();
+			const auto size = video->trackOrUserpicSize();
+			if (!size.isEmpty()) {
+				sizes.push_back(Geometry{ video, size });
+			}
 		}
 	}
 	if (sizes.empty()) {
@@ -524,6 +548,44 @@ Viewport::Layout Viewport::countWide(int outerWidth, int outerHeight) const {
 	auto rowsBlack = uint64();
 	const auto count = int(sizes.size());
 	const auto skip = st::groupCallVideoLargeSkip;
+
+	const auto slotConstraint = _slotCount.current();
+	const auto fixedGridDim = (slotConstraint == 1)
+		? 1
+		: (slotConstraint == 4)
+		? 2
+		: (slotConstraint == 9)
+		? 3
+		: 0;
+
+	if (fixedGridDim > 0) {
+		const auto cols = fixedGridDim;
+		const auto rows = fixedGridDim;
+		const auto maxVisible = cols * rows;
+		const auto visibleCount = std::min(count, maxVisible);
+		const auto cellW = (outerWidth - (cols - 1) * skip) / float64(cols);
+		const auto cellH = (outerHeight - (rows - 1) * skip) / float64(rows);
+
+		for (auto i = 0; i != count; ++i) {
+			auto &geometry = sizes[i];
+			if (i < visibleCount) {
+				const auto c = i % cols;
+				const auto r = i / cols;
+				const auto left = int(base::SafeRound(c * (cellW + skip)));
+				const auto top = int(base::SafeRound(r * (cellH + skip)));
+				const auto w = int(base::SafeRound((c + 1) * cellW + c * skip)) - left;
+				const auto h = int(base::SafeRound((r + 1) * cellH + r * skip)) - top;
+				geometry.columns = { left, top, w, h };
+				geometry.rows = { left, top, w, h };
+			} else {
+				geometry.columns = QRect();
+				geometry.rows = QRect();
+			}
+		}
+		result.useColumns = true;
+		return result;
+	}
+
 	const auto slices = int(std::ceil(std::sqrt(float64(count))));
 	{
 		auto index = 0;
@@ -951,6 +1013,27 @@ void Viewport::setGridMode(bool grid) {
 void Viewport::setSlotCount(int count) {
 	_slotCount = count;
 	updateTilesGeometry();
+}
+
+void Viewport::togglePin(const VideoEndpoint &endpoint, bool pinned) {
+	const auto i = std::find(_pinnedEndpoints.begin(), _pinnedEndpoints.end(), endpoint);
+	if (pinned && i == _pinnedEndpoints.end()) {
+		_pinnedEndpoints.push_back(endpoint);
+		_pinnedSlots[endpoint] = static_cast<int>(_pinnedEndpoints.size()) - 1;
+		updateTilesGeometry();
+	} else if (!pinned && i != _pinnedEndpoints.end()) {
+		_pinnedEndpoints.erase(i);
+		_pinnedSlots.erase(endpoint);
+		updateTilesGeometry();
+	}
+}
+
+bool Viewport::isPinned(const VideoEndpoint &endpoint) const {
+	return ranges::contains(_pinnedEndpoints, endpoint);
+}
+
+const std::vector<VideoEndpoint> &Viewport::pinnedEndpoints() const {
+	return _pinnedEndpoints;
 }
 
 rpl::variable<bool> Viewport::gridModeValue() const {

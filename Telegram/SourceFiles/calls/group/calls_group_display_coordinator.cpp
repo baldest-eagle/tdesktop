@@ -216,6 +216,7 @@ void DisplayCoordinator::addVideoTrack(
 		rpl::producer<QSize> trackSize,
 		rpl::producer<bool> pinned,
 		bool self) {
+	_peerToEndpoints[endpoint.peer] = endpoint;
 	auto it = _displays.find(displayIndex);
 	if (it == _displays.end()) {
 		return;
@@ -259,14 +260,25 @@ void DisplayCoordinator::updateAudioLevels(const std::vector<std::pair<PeerData*
 		}
 	}
 
-	if (newSpeaker != _activeSpeaker) {
-		_activeSpeaker = newSpeaker;
-		// Update displays with ActiveSpeaker role
-		for (auto &[index, display] : _displays) {
-			if (display.role == DisplayRole::ActiveSpeaker && display.viewport) {
-				// Show the active speaker large
-				// Note: need to find the endpoint for this peer
+	if (newSpeaker) {
+		if (newSpeaker != _activeSpeaker) {
+			_speakerHoldFrames++;
+			// Hysteresis: require 3 consecutive frames of new loudest speaker before switching
+			if (_speakerHoldFrames >= 3) {
+				_activeSpeaker = newSpeaker;
+				_speakerHoldFrames = 0;
+				const auto epIt = _peerToEndpoints.find(not_null{ newSpeaker });
+				if (epIt != _peerToEndpoints.end()) {
+					const auto &endpoint = epIt->second;
+					for (auto &[index, display] : _displays) {
+						if (display.role == DisplayRole::ActiveSpeaker && display.viewport) {
+							display.viewport->showLarge(endpoint);
+						}
+					}
+				}
 			}
+		} else {
+			_speakerHoldFrames = 0;
 		}
 	}
 }

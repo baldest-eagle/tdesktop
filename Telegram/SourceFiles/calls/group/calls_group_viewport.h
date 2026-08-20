@@ -91,6 +91,9 @@ public:
 	void setScrollTop(int scrollTop);
 	void setGridMode(bool grid);
 	void setSlotCount(int count);
+	void togglePin(const VideoEndpoint &endpoint, bool pinned);
+	[[nodiscard]] bool isPinned(const VideoEndpoint &endpoint) const;
+	[[nodiscard]] const std::vector<VideoEndpoint> &pinnedEndpoints() const;
 
 	void add(
 		const VideoEndpoint &endpoint,
@@ -235,6 +238,8 @@ private:
 
 	rpl::variable<bool> _gridMode = false;
 	rpl::variable<int> _slotCount = 0;
+	std::vector<VideoEndpoint> _pinnedEndpoints;
+	std::map<VideoEndpoint, int> _pinnedSlots;
 
 	Ui::RpWidgetWrap * const _borrowed = nullptr;
 	QRect _borrowedGeometry;
