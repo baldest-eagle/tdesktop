@@ -173,7 +173,7 @@ void Viewport::setScrollTop(int scrollTop) {
 }
 
 bool Viewport::wide() const {
-	return (_mode == PanelMode::Wide);
+	return (_mode == PanelMode::Wide) || (_mode == PanelMode::Grid);
 }
 
 bool Viewport::videoStream() const {
@@ -740,8 +740,10 @@ void Viewport::refreshHasTwoOrMore() {
 
 void Viewport::updateTopControlsVisibility() {
 	if (_selected.tile) {
+		const auto inGrid = _gridMode.current();
 		_selected.tile->toggleTopControlsShown(
-			_hasTwoOrMore && wide() && _large && _large == _selected.tile);
+			(_hasTwoOrMore && wide() && _large && _large == _selected.tile)
+			|| inGrid);
 	}
 }
 

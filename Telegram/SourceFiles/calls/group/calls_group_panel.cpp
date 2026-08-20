@@ -424,6 +424,16 @@ void Panel::initWindow() {
 				&& _fullScreenOrMaximized.current()) {
 				toggleFullScreen();
 			}
+		} else if (type == QEvent::KeyPress) {
+			const auto keyEvent = static_cast<QKeyEvent*>(e.get());
+			if (keyEvent->key() == Qt::Key_T
+				&& (keyEvent->modifiers() & Qt::ControlModifier)
+				&& (keyEvent->modifiers() & Qt::ShiftModifier)) {
+				if (_floatingOverlay) {
+					_floatingOverlay->toggle();
+				}
+				return base::EventFilterResult::Cancel;
+			}
 		} else if (type == QEvent::WindowStateChange) {
 			updateFullScreen();
 		}
@@ -1410,13 +1420,21 @@ void Panel::setupVideo(not_null<Viewport*> viewport) {
 
 	viewport->pinToggled(
 	) | rpl::on_next([=](bool pinned) {
-		_call->pinVideoEndpoint(pinned
-			? _call->videoEndpointLarge()
-			: VideoEndpoint{});
+		const auto target = _call->videoEndpointLarge();
+		if (target) {
+			viewport->togglePin(target, pinned);
+		}
+		_call->pinVideoEndpoint(pinned ? target : VideoEndpoint{});
 	}, viewport->lifetime());
 
 	viewport->clicks(
 	) | rpl::on_next([=](VideoEndpoint &&endpoint) {
+		if (_viewport && _viewport->gridModeValue().current()) {
+			// In grid mode: toggle pinning directly on click
+			const auto currentlyPinned = _viewport->isPinned(endpoint);
+			_viewport->togglePin(endpoint, !currentlyPinned);
+			return;
+		}
 		if (_call->videoEndpointLarge() == endpoint) {
 			_call->showVideoEndpointLarge({});
 		} else if (_call->videoEndpointPinned()) {
@@ -2108,7 +2126,8 @@ bool Panel::updateMode() {
 }
 
 void Panel::updateButtonsStyles() {
-	const auto wide = (_mode.current() == PanelMode::Wide);
+	const auto wide = (_mode.current() == PanelMode::Wide)
+		|| (_mode.current() == PanelMode::Grid);
 	_mute->setStyle(wide ? st::callMuteButtonSmall : st::callMuteButton);
 	if (_video) {
 		_video->setStyle(
@@ -2682,7 +2701,7 @@ void Panel::updateButtonsGeometry() {
 	};
 	const auto messagesEnabled = _call->messagesEnabled();
 	auto messagesBottomSkip = 0;
-	if (mode() == PanelMode::Wide) {
+	if (mode() == PanelMode::Wide || mode() == PanelMode::Grid) {
 		Assert(_video != nullptr);
 		Assert(_message != nullptr);
 		Assert(_screenShare != nullptr);

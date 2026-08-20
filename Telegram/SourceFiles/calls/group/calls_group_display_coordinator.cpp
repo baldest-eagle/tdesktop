@@ -98,8 +98,10 @@ void DisplayCoordinator::createDisplayWindow(int displayIndex, QScreen *screen) 
 	display.screen = screen;
 	display.role = DisplayRole::GridViewport;
 
-	// Create a QWidget for this display
-	display.widget = base::make_unique_q<QWidget>();
+	// Create a top-level window for this display
+	display.widget = base::make_unique_q<QWidget>(
+		nullptr,
+		Qt::Window | Qt::FramelessWindowHint);
 	if (!display.widget) {
 		_displays.erase(displayIndex);
 		return;
@@ -120,9 +122,11 @@ void DisplayCoordinator::createDisplayWindow(int displayIndex, QScreen *screen) 
 	}
 
 	// Position on the target screen
-	const auto screenGeo = screen->availableGeometry();
+	const auto screenGeo = screen->geometry();
 	display.widget->setGeometry(screenGeo);
+	display.viewport->widget()->show();
 	display.widget->show();
+	display.widget->raise();
 
 	// Connect quality requests from this viewport
 	display.viewport->qualityRequests(
