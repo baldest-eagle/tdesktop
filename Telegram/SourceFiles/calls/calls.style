@@ -14,6 +14,19 @@ using "info/info.style"; // ShortInfoCover
 using "window/window.style";
 using "settings/settings.style"; // defaultSubsectionTitle
 
+CallButton {
+	button: IconButton;
+	bg: color;
+	bgSize: pixels;
+	bgPosition: point;
+	angle: double;
+	outerRadius: pixels;
+	outerBg: color;
+	label: FlatLabel;
+	cornerButtonPosition: point;
+	cornerButtonBorder: pixels;
+}
+
 CallSignalBars {
 	width: pixels;
 	radius: pixels;
@@ -104,7 +117,7 @@ callButtonLabel: FlatLabel(defaultFlatLabel) {
 	maxHeight: 16px;
 }
 
-callAnswer: IconButton(callButton) {
+callAnswer: CallButton {
 	button: IconButton(callButton) {
 		icon: icon {{ "calls/call_answer", callIconFg }};
 		ripple: RippleAnimation(defaultRippleAnimation) {
@@ -119,7 +132,7 @@ callAnswer: IconButton(callButton) {
 	outerBg: callAnswerBgOuter;
 	label: callButtonLabel;
 }
-callStartVideo: IconButton(callAnswer) {
+callStartVideo: CallButton(callAnswer) {
 	button: IconButton(callButton) {
 		icon: icon {{ "calls/call_camera_active", callIconFg }};
 		ripple: RippleAnimation(defaultRippleAnimation) {
@@ -127,44 +140,44 @@ callStartVideo: IconButton(callAnswer) {
 		}
 	}
 }
-callHangup: IconButton(callAnswer) {
+callHangup: CallButton(callAnswer) {
 	button: IconButton(callButton) {
 		icon: icon {{ "calls/call_discard", callIconFg }};
 		ripple: RippleAnimation(defaultRippleAnimation) {
 			color: callHangupRipple;
 		}
 	}
+	bg: callHangupBg;
+	outerBg: callHangupBg;
 }
-callCancel: IconButton(callAnswer) {
+callCancel: CallButton(callAnswer) {
 	button: IconButton(callButton) {
 		icon: icon {{ "calls/call_cancel", callIconFgActive }};
 		ripple: RippleAnimation(defaultRippleAnimation) {
-			color: callCancelRipple;
+			color: callIconActiveRipple;
 		}
 	}
+	bg: callIconBgActive;
+	outerBg: callIconBgActive;
 }
-callMicrophoneMute: IconButton(callAnswer) {
+callMicrophoneMute: CallButton(callAnswer) {
 	button: IconButton(callButton) {
-		icon: icon {{ "calls/call_mute", callIconFg }};
+		icon: icon {{ "calls/call_record_active", callIconFg }};
 		ripple: RippleAnimation(defaultRippleAnimation) {
 			color: callMuteRipple;
 		}
 	}
+	bg: callIconBg;
+	outerBg: callMuteRipple;
+	cornerButtonPosition: point(40px, 4px);
+	cornerButtonBorder: 2px;
 }
-callMicrophoneUnmute: IconButton(callMicrophoneMute) {
-}
-callCameraMute: IconButton(callMicrophoneMute) {
-}
-callCameraUnmute: IconButton(callMicrophoneUnmute) {
-}
-callAddPeople: IconButton(callAnswer) {
+callMicrophoneUnmute: CallButton(callMicrophoneMute) {
 	button: IconButton(callButton) {
-		icon: icon {{ "calls/call_add_user", callIconFg }};
+		icon: icon {{ "calls/call_record_muted", callIconFgActive }};
 		ripple: RippleAnimation(defaultRippleAnimation) {
-			color: callAddPeopleRipple;
+			color: callIconActiveRipple;
 		}
-	}
-}
 	}
 	bg: callIconBgActive;
 }

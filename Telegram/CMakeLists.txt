@@ -453,10 +453,6 @@ PRIVATE
     calls/group/calls_group_viewport_raster.h
     calls/group/calls_group_viewport_rhi.cpp
     calls/group/calls_group_viewport_rhi.h
-    calls/group/calls_group_display_coordinator.cpp
-    calls/group/calls_group_display_coordinator.h
-    calls/group/calls_group_floating_overlay.cpp
-    calls/group/calls_group_floating_overlay.h
     calls/group/calls_group_viewport_tile.cpp
     calls/group/calls_group_viewport_tile.h
     calls/group/calls_volume_item.cpp
@@ -2131,7 +2127,6 @@ PRIVATE
     qrc/emoji_7.qrc
     qrc/emoji_8.qrc
     qrc/emoji_preview.qrc
-    qrc/telegram/animations.qrc
     qrc/telegram/export.qrc
     qrc/telegram/export_rich.qrc
     qrc/telegram/picker.qrc
@@ -2146,6 +2141,7 @@ PRIVATE
 
 include(cmake/qrhi_shaders.cmake)
 include(cmake/generate_models.cmake)
+include(cmake/pack_animations.cmake)
 
 if (APPLE AND NOT build_macstore)
     nice_target_sources(Telegram ${res_loc}
