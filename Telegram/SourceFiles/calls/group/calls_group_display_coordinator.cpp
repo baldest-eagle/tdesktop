@@ -315,37 +315,7 @@ void DisplayCoordinator::showLarge(int displayIndex, const VideoEndpoint &endpoi
 }
 
 void DisplayCoordinator::updateAudioLevels(const std::vector<std::pair<PeerData*, double>> &levels) {
-	// Find the loudest speaker
-	PeerData* newSpeaker = nullptr;
-	double maxLevel = 0.0;
-	for (const auto &[peer, level] : levels) {
-		if (level > maxLevel && level > _speakerThreshold) {
-			maxLevel = level;
-			newSpeaker = peer;
-		}
-	}
-
-	if (newSpeaker) {
-		if (newSpeaker != _activeSpeaker) {
-			_speakerHoldFrames++;
-			// Hysteresis: require 3 consecutive frames of new loudest speaker before switching
-			if (_speakerHoldFrames >= 3) {
-				_activeSpeaker = newSpeaker;
-				_speakerHoldFrames = 0;
-				const auto epIt = _peerToEndpoints.find(not_null{ newSpeaker });
-				if (epIt != _peerToEndpoints.end()) {
-					const auto &endpoint = epIt->second;
-					for (auto &[index, display] : _displays) {
-						if (display.role == DisplayRole::ActiveSpeaker && display.viewport) {
-							display.viewport->showLarge(endpoint);
-						}
-					}
-				}
-			}
-		} else {
-			_speakerHoldFrames = 0;
-		}
-	}
+	// Active speaker auto-stealing disabled to ensure only explicitly pinned feeds appear on secondary displays
 }
 
 int DisplayCoordinator::displayCount() const {

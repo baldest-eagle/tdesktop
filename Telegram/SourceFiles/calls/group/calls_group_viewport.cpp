@@ -564,11 +564,7 @@ Viewport::Layout Viewport::countWide(int outerWidth, int outerHeight) const {
 		? 2
 		: (slotConstraint == 9)
 		? 3
-		: (count == 1)
-		? 1
-		: (count <= 4)
-		? 2
-		: 3;
+		: 0;
 
 	if (fixedGridDim > 0) {
 		const auto cols = fixedGridDim;

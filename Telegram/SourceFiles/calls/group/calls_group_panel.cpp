@@ -1471,12 +1471,40 @@ void Panel::promptPinTargetScreen(const VideoEndpoint &endpoint) {
 	const auto isSelf = (endpoint.peer == _call->joinAs());
 
 	auto box = Box([=](not_null<Ui::GenericBox*> box) {
-		box->setTitle(rpl::single(QStringLiteral("Pin Camera to Screen")));
+		const auto isPinnedS0 = _displayCoordinator && _displayCoordinator->isPinnedOnScreen(0, endpoint);
+		const auto isPinnedS1 = _displayCoordinator && _displayCoordinator->isPinnedOnScreen(1, endpoint);
+
+		box->setTitle(rpl::single((isPinnedS0 || isPinnedS1)
+			? QStringLiteral("Manage Pinned Screen")
+			: QStringLiteral("Pin Camera to Screen")));
 		box->addRow(
 			object_ptr<Ui::FlatLabel>(
 				box.get(),
 				QStringLiteral("Choose target screen for ") + endpoint.peer->name() + QStringLiteral(":"),
 				st::groupCallBoxLabel));
+
+		if (isPinnedS0 || isPinnedS1) {
+			box->addButton(rpl::single(QStringLiteral("Unpin (Return to Main Grid)")), [=] {
+				box->closeBox();
+				if (_displayCoordinator) {
+					_displayCoordinator->unpinFromScreen(0, endpoint);
+					_displayCoordinator->unpinFromScreen(1, endpoint);
+				}
+				// Restore to main grid
+				if (_viewport) {
+					const auto &t = _call->activeVideoTracks();
+					const auto it = t.find(endpoint);
+					if (it != t.end()) {
+						_viewport->add(
+							endpoint,
+							VideoTileTrack{ GroupCall::TrackPointer(it->second), row },
+							GroupCall::TrackSizeValue(it->second),
+							rpl::single(false),
+							isSelf);
+					}
+				}
+			});
+		}
 
 		box->addButton(rpl::single(QStringLiteral("Screen 1 (Stage Window)")), [=] {
 			box->closeBox();

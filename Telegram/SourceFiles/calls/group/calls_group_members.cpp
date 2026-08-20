@@ -1976,16 +1976,25 @@ void Members::setupList() {
 	_listController->setStyleOverrides(&st::groupCallMembersList);
 
 	// In-call username search bar at the top of the sidebar
+	const auto searchHeight = st::defaultInputField.heightMin + st::groupCallMembersTopSkip;
 	auto searchWrap = _layout->add(
-		object_ptr<Ui::RpWidget>(_layout.get()));
+		object_ptr<Ui::FixedHeightWidget>(_layout.get(), searchHeight));
+	searchWrap->paintRequest(
+	) | rpl::on_next([=](QRect clip) {
+		QPainter(searchWrap).fillRect(clip, st::groupCallMembersBg);
+	}, searchWrap->lifetime());
+
 	auto searchField = Ui::CreateChild<Ui::InputField>(
 		searchWrap,
 		st::defaultInputField,
 		rpl::single(QStringLiteral("Search username...")));
-	searchWrap->resize(
-		searchWrap->width(),
-		searchField->height() + st::groupCallMembersTopSkip);
-	searchField->move(st::groupCallMembersMargin.left(), st::groupCallMembersTopSkip / 2);
+	searchWrap->sizeValue(
+	) | rpl::on_next([=](QSize size) {
+		const auto left = st::groupCallMembersMargin.left();
+		const auto width = size.width() - left - st::groupCallMembersMargin.right();
+		searchField->setGeometry(left, (size.height() - searchField->height()) / 2, width, searchField->height());
+	}, searchWrap->lifetime());
+
 	searchField->changes(
 	) | rpl::on_next([=] {
 		searchByQuery(searchField->getLastText());
@@ -2101,8 +2110,10 @@ void Members::trackViewportGeometry() {
 
 	_viewport->fullHeightValue(
 	) | rpl::on_next([=](int viewport) {
-		_videoWrap->resize(_videoWrap->width(), viewport);
-		if (viewport > 0) {
+		const auto isWide = (_mode.current() == PanelMode::Wide);
+		const auto effectiveHeight = isWide ? 0 : viewport;
+		_videoWrap->resize(_videoWrap->width(), effectiveHeight);
+		if (effectiveHeight > 0) {
 			move();
 			resize();
 		}
