@@ -41,6 +41,7 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "window/window_controller.h" // Controller::sessionController.
 #include "window/window_session_controller.h"
 #include "webrtc/webrtc_video_track.h"
+#include "ui/widgets/fields/input_field.h"
 #include "styles/style_calls.h"
 
 namespace Calls::Group {
@@ -1981,7 +1982,9 @@ void Members::setupList() {
 		searchWrap,
 		st::defaultInputField,
 		rpl::single(QStringLiteral("Search username...")));
-	searchWrap->resize(searchWrap->width(), searchField->height() + st::groupCallMembersTopSkip);
+	searchWrap->resize(
+		searchWrap->width(),
+		searchField->height() + st::groupCallMembersTopSkip);
 	searchField->move(st::groupCallMembersMargin.left(), st::groupCallMembersTopSkip / 2);
 	searchField->changes(
 	) | rpl::on_next([=] {
