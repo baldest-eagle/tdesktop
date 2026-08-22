@@ -13,6 +13,8 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "calls/group/calls_group_call.h"
 #include "calls/group/calls_group_members_row.h"
 #include "calls/group/calls_group_menu.h"
+#include "calls/group/calls_group_panel.h"
+#include "calls/group/calls_group_display_coordinator.h"
 #include "calls/group/calls_group_viewport.h"
 #include "calls/group/calls_volume_item.h"
 #include "calls/calls_emoji_fingerprint.h"
@@ -1420,8 +1422,8 @@ base::unique_qptr<Ui::PopupMenu> Members::Controller::createRowContextMenu(
 		const auto &shown = _call->shownVideoTracks();
 		const auto participant = real->participantByPeer(participantPeer);
 		if (participant) {
-			const auto &large = _call->videoEndpointLarge();
-			const auto pinned = _call->videoEndpointPinned();
+			const auto panel = Core::App().calls().currentGroupCallPanel();
+			const auto coordinator = panel ? panel->displayCoordinator() : nullptr;
 			const auto camera = VideoEndpoint{
 				VideoEndpointType::Camera,
 				participantPeer,
@@ -1432,26 +1434,76 @@ base::unique_qptr<Ui::PopupMenu> Members::Controller::createRowContextMenu(
 				participantPeer,
 				computeScreenEndpoint(participant),
 			};
-			if (shown.contains(camera) || (pinned && large == camera)) {
-				if (pinned && large == camera) {
+			if (shown.contains(camera) || (coordinator && (coordinator->isPinnedOnScreen(0, camera) || coordinator->isPinnedOnScreen(1, camera)))) {
+				if (coordinator && coordinator->isPinnedOnScreen(0, camera)) {
 					result->addAction(
-						tr::lng_group_call_context_unpin_camera(tr::now),
-						[=] { _call->pinVideoEndpoint({}); });
+						u"Unpin Camera from Screen 1"_q,
+						[=] {
+							if (const auto p = Core::App().calls().currentGroupCallPanel()) {
+								p->unpinFromScreen(0, camera);
+							}
+						});
 				} else {
 					result->addAction(
-						tr::lng_group_call_context_pin_to_grid(tr::now),
-						[=] { _call->pinVideoEndpoint(camera); });
+						u"Pin Camera to Screen 1"_q,
+						[=] {
+							if (const auto p = Core::App().calls().currentGroupCallPanel()) {
+								p->pinToScreen(0, camera);
+							}
+						});
+				}
+				if (coordinator && coordinator->isPinnedOnScreen(1, camera)) {
+					result->addAction(
+						u"Unpin Camera from Screen 2"_q,
+						[=] {
+							if (const auto p = Core::App().calls().currentGroupCallPanel()) {
+								p->unpinFromScreen(1, camera);
+							}
+						});
+				} else {
+					result->addAction(
+						u"Pin Camera to Screen 2"_q,
+						[=] {
+							if (const auto p = Core::App().calls().currentGroupCallPanel()) {
+								p->pinToScreen(1, camera);
+							}
+						});
 				}
 			}
-			if (shown.contains(screen) || (pinned && large == screen)) {
-				if (pinned && large == screen) {
+			if (shown.contains(screen) || (coordinator && (coordinator->isPinnedOnScreen(0, screen) || coordinator->isPinnedOnScreen(1, screen)))) {
+				if (coordinator && coordinator->isPinnedOnScreen(0, screen)) {
 					result->addAction(
-						tr::lng_group_call_context_unpin_screen(tr::now),
-						[=] { _call->pinVideoEndpoint({}); });
+						u"Unpin Screen from Screen 1"_q,
+						[=] {
+							if (const auto p = Core::App().calls().currentGroupCallPanel()) {
+								p->unpinFromScreen(0, screen);
+							}
+						});
 				} else {
 					result->addAction(
-						tr::lng_group_call_context_pin_screen(tr::now),
-						[=] { _call->pinVideoEndpoint(screen); });
+						u"Pin Screen to Screen 1"_q,
+						[=] {
+							if (const auto p = Core::App().calls().currentGroupCallPanel()) {
+								p->pinToScreen(0, screen);
+							}
+						});
+				}
+				if (coordinator && coordinator->isPinnedOnScreen(1, screen)) {
+					result->addAction(
+						u"Unpin Screen from Screen 2"_q,
+						[=] {
+							if (const auto p = Core::App().calls().currentGroupCallPanel()) {
+								p->unpinFromScreen(1, screen);
+							}
+						});
+				} else {
+					result->addAction(
+						u"Pin Screen to Screen 2"_q,
+						[=] {
+							if (const auto p = Core::App().calls().currentGroupCallPanel()) {
+								p->pinToScreen(1, screen);
+							}
+						});
 				}
 			}
 		}

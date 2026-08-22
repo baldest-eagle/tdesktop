@@ -219,13 +219,9 @@ void Viewport::handleMouseRelease(QPoint position, Qt::MouseButton button) {
 				return;
 			} else if (button == Qt::RightButton) {
 				tile->row()->showContextMenu();
-			} else if (pressed.element == Selection::Element::PinButton) {
-				const auto shouldPin = !isPinned(tile->endpoint());
-				togglePin(tile->endpoint(), shouldPin);
-				_pinToggles.fire({ tile->endpoint(), shouldPin });
-			} else if (pressed.element == Selection::Element::BackButton) {
-				togglePin(tile->endpoint(), false);
-				_pinToggles.fire({ tile->endpoint(), false });
+			} else if (pressed.element == Selection::Element::PinButton
+				|| pressed.element == Selection::Element::BackButton) {
+				_pinToggles.fire({ tile->endpoint(), true });
 			} else if (!wide()
 				|| (_hasTwoOrMore && !_large)) {
 				_clicks.fire_copy(tile->endpoint());

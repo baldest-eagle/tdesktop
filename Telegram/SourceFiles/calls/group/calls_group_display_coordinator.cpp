@@ -252,6 +252,9 @@ void DisplayCoordinator::unpinFromScreen(int screenIndex, const VideoEndpoint &e
 	_routedEndpoints[screenIndex].erase(endpoint);
 	it->second.viewport->togglePin(endpoint, false);
 	it->second.viewport->remove(endpoint);
+	if (_routedEndpoints[screenIndex].empty()) {
+		hideDisplay(screenIndex);
+	}
 }
 
 bool DisplayCoordinator::isPinnedOnScreen(int screenIndex, const VideoEndpoint &endpoint) const {

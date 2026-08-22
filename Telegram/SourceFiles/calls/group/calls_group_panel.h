@@ -107,7 +107,13 @@ public:
 		return _floatingOverlay.get();
 	}
 
+	[[nodiscard]] DisplayCoordinator *displayCoordinator() const {
+		return _displayCoordinator.get();
+	}
+
 	void promptPinTargetScreen(const VideoEndpoint &endpoint);
+	void pinToScreen(int screenIndex, const VideoEndpoint &endpoint);
+	void unpinFromScreen(int screenIndex, const VideoEndpoint &endpoint);
 
 	rpl::lifetime &lifetime();
 

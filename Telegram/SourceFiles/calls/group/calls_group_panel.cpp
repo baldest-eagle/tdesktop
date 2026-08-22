@@ -1402,18 +1402,7 @@ void Panel::setupVideo(not_null<Viewport*> viewport) {
 	) | rpl::on_next([=](const Viewport::PinToggle &toggle) {
 		const auto target = toggle.endpoint;
 		if (target) {
-			if (toggle.pinned) {
-				promptPinTargetScreen(target);
-			} else {
-				if (_displayCoordinator) {
-					_displayCoordinator->unpinFromScreen(0, target);
-					_displayCoordinator->unpinFromScreen(1, target);
-				}
-				_viewport->togglePin(target, false);
-				if (_call->videoEndpointLarge() == target) {
-					_call->pinVideoEndpoint({});
-				}
-			}
+			promptPinTargetScreen(target);
 		}
 	}, viewport->lifetime());
 
@@ -1428,8 +1417,8 @@ void Panel::setupVideo(not_null<Viewport*> viewport) {
 	}, viewport->lifetime());
 }
 
-void Panel::promptPinTargetScreen(const VideoEndpoint &endpoint) {
-	if (!endpoint) {
+void Panel::pinToScreen(int screenIndex, const VideoEndpoint &endpoint) {
+	if (!endpoint || !_displayCoordinator) {
 		return;
 	}
 	const auto &tracks = _call->activeVideoTracks();
@@ -1441,81 +1430,61 @@ void Panel::promptPinTargetScreen(const VideoEndpoint &endpoint) {
 	if (!row) {
 		return;
 	}
+	_displayCoordinator->pinToScreen(
+		screenIndex,
+		endpoint,
+		VideoTileTrack{ GroupCall::TrackPointer(it->second), row },
+		GroupCall::TrackSizeValue(it->second),
+		endpoint.peer == _call->joinAs());
+}
 
-	const auto track = it->second.get();
-	const auto isSelf = (endpoint.peer == _call->joinAs());
+void Panel::unpinFromScreen(int screenIndex, const VideoEndpoint &endpoint) {
+	if (_displayCoordinator) {
+		_displayCoordinator->unpinFromScreen(screenIndex, endpoint);
+	}
+}
+
+void Panel::promptPinTargetScreen(const VideoEndpoint &endpoint) {
+	if (!endpoint) {
+		return;
+	}
+	const auto isPinnedS0 = _displayCoordinator && _displayCoordinator->isPinnedOnScreen(0, endpoint);
+	const auto isPinnedS1 = _displayCoordinator && _displayCoordinator->isPinnedOnScreen(1, endpoint);
+	const auto isPinnedAny = isPinnedS0 || isPinnedS1;
 
 	auto box = Box([=](not_null<Ui::GenericBox*> box) {
-		const auto isPinnedS0 = _displayCoordinator && _displayCoordinator->isPinnedOnScreen(0, endpoint);
-		const auto isPinnedS1 = _displayCoordinator && _displayCoordinator->isPinnedOnScreen(1, endpoint);
-		const auto isPinnedViewport = _viewport && _viewport->isPinned(endpoint);
-		const auto isPinnedCall = _call->videoEndpointPinned() && (_call->videoEndpointLarge() == endpoint);
-		const auto isPinnedAny = isPinnedS0 || isPinnedS1 || isPinnedViewport || isPinnedCall;
-
 		box->setTitle(rpl::single(isPinnedAny
-			? u"Manage Pinned Screen"_q
-			: u"Pin Camera to Screen"_q));
+			? u"Manage Pinned Screens"_q
+			: u"Pin to Screen"_q));
 		box->addRow(
 			object_ptr<Ui::FlatLabel>(
 				box.get(),
-				u"Choose target screen for "_q + endpoint.peer->name() + u":"_q,
+				u"Select target screen for "_q + endpoint.peer->name() + u":"_q,
 				st::groupCallBoxLabel));
 
-		if (isPinnedAny) {
-			box->addButton(rpl::single(u"Unpin (Return to Main Grid)"_q), [=] {
+		if (isPinnedS0) {
+			box->addButton(rpl::single(u"Unpin from Screen 1 (Stage Window)"_q), [=] {
 				box->closeBox();
-				if (_displayCoordinator) {
-					_displayCoordinator->unpinFromScreen(0, endpoint);
-					_displayCoordinator->unpinFromScreen(1, endpoint);
-				}
-				if (_viewport) {
-					_viewport->togglePin(endpoint, false);
-					const auto &t = _call->activeVideoTracks();
-					const auto it = t.find(endpoint);
-					if (it != t.end()) {
-						_viewport->add(
-							endpoint,
-							VideoTileTrack{ GroupCall::TrackPointer(it->second), row },
-							GroupCall::TrackSizeValue(it->second),
-							rpl::single(false),
-							isSelf);
-					}
-				}
-				if (_call->videoEndpointLarge() == endpoint) {
-					_call->pinVideoEndpoint({});
-				}
+				unpinFromScreen(0, endpoint);
+			});
+		} else {
+			box->addButton(rpl::single(u"Pin to Screen 1 (Stage Window)"_q), [=] {
+				box->closeBox();
+				pinToScreen(0, endpoint);
 			});
 		}
 
-		box->addButton(rpl::single(u"Screen 1 (Stage Window)"_q), [=] {
-			box->closeBox();
-			if (_displayCoordinator) {
-				_displayCoordinator->pinToScreen(
-					0,
-					endpoint,
-					VideoTileTrack{ GroupCall::TrackPointer(it->second), row },
-					GroupCall::TrackSizeValue(it->second),
-					isSelf);
-			}
-			if (_viewport) {
-				_viewport->remove(endpoint);
-			}
-		});
-
-		box->addButton(rpl::single(u"Screen 2 (2nd Monitor)"_q), [=] {
-			box->closeBox();
-			if (_displayCoordinator) {
-				_displayCoordinator->pinToScreen(
-					1,
-					endpoint,
-					VideoTileTrack{ GroupCall::TrackPointer(it->second), row },
-					GroupCall::TrackSizeValue(it->second),
-					isSelf);
-			}
-			if (_viewport) {
-				_viewport->remove(endpoint);
-			}
-		});
+		if (isPinnedS1) {
+			box->addButton(rpl::single(u"Unpin from Screen 2 (2nd Monitor)"_q), [=] {
+				box->closeBox();
+				unpinFromScreen(1, endpoint);
+			});
+		} else {
+			box->addButton(rpl::single(u"Pin to Screen 2 (2nd Monitor)"_q), [=] {
+				box->closeBox();
+				pinToScreen(1, endpoint);
+			});
+		}
 
 		box->addButton(tr::lng_cancel(), [=] { box->closeBox(); });
 	});
