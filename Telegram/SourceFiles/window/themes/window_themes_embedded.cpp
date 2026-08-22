@@ -161,6 +161,38 @@ style::colorizer ColorizerFrom(
 		} };
 		result.lightnessMin = 64;
 		break;
+	case EmbeddedType::NightPureBlack:
+		result.keepContrast = base::flat_map<QLatin1String, Pair>{ {
+			{ qstr("activeButtonFg"), Pair{ cColor("2f6ea5"), cColor("000000") } },
+			{ qstr("profileVerifiedCheckFg"), Pair{ cColor("5288c1"), cColor("000000") } },
+			{ qstr("overviewCheckFgActive"), Pair{ cColor("5288c1"), cColor("000000") } },
+			{ qstr("historyFileInIconFg"), Pair{ cColor("3f96d0"), cColor("111111") } },
+			{ qstr("historyFileInIconFgSelected"), Pair{ cColor("6ab4f4"), cColor("2e70a5") } },
+			{ qstr("historyFileInRadialFg"), Pair{ cColor("3f96d0"), cColor("111111") } },
+			{ qstr("historyFileInRadialFgSelected"), Pair{ cColor("6ab4f4"), cColor("2e70a5") } },
+			{ qstr("historyFileOutIconFg"), Pair{ cColor("4c9ce2"), cColor("1f2937") } },
+			{ qstr("historyFileOutIconFgSelected"), Pair{ cColor("58abf3"), cColor("2e70a5") } },
+			{ qstr("historyFileOutRadialFg"), Pair{ cColor("4c9ce2"), cColor("1f2937") } },
+			{ qstr("historyFileOutRadialFgSelected"), Pair{ cColor("58abf3"), cColor("2e70a5") } },
+		} };
+		result.lightnessMin = 64;
+		break;
+	case EmbeddedType::NightSoftDark:
+		result.keepContrast = base::flat_map<QLatin1String, Pair>{ {
+			{ qstr("activeButtonFg"), Pair{ cColor("2f6ea5"), cColor("181c24") } },
+			{ qstr("profileVerifiedCheckFg"), Pair{ cColor("5288c1"), cColor("181c24") } },
+			{ qstr("overviewCheckFgActive"), Pair{ cColor("5288c1"), cColor("181c24") } },
+			{ qstr("historyFileInIconFg"), Pair{ cColor("3f96d0"), cColor("1f232b") } },
+			{ qstr("historyFileInIconFgSelected"), Pair{ cColor("6ab4f4"), cColor("2e70a5") } },
+			{ qstr("historyFileInRadialFg"), Pair{ cColor("3f96d0"), cColor("1f232b") } },
+			{ qstr("historyFileInRadialFgSelected"), Pair{ cColor("6ab4f4"), cColor("2e70a5") } },
+			{ qstr("historyFileOutIconFg"), Pair{ cColor("4c9ce2"), cColor("253040") } },
+			{ qstr("historyFileOutIconFgSelected"), Pair{ cColor("58abf3"), cColor("2e70a5") } },
+			{ qstr("historyFileOutRadialFg"), Pair{ cColor("4c9ce2"), cColor("253040") } },
+			{ qstr("historyFileOutRadialFgSelected"), Pair{ cColor("58abf3"), cColor("2e70a5") } },
+		} };
+		result.lightnessMin = 64;
+		break;
 	}
 	const auto nowLightness = color.lightness();
 	const auto limitedLightness = std::clamp(
@@ -281,6 +313,28 @@ std::vector<EmbeddedScheme> EmbeddedThemes() {
 			":/gui/night-green.tdesktop-theme",
 			qColor("3fc1b0")
 		},
+		EmbeddedScheme{
+			EmbeddedType::NightPureBlack,
+			qColor("000000"),
+			qColor("1f2937"),
+			qColor("111111"),
+			qColor("333333"),
+			qColor("5ca7d4"),
+			rpl::single(u"Pure Black (OLED)"_q),
+			":/gui/night.tdesktop-theme",
+			qColor("5288c1")
+		},
+		EmbeddedScheme{
+			EmbeddedType::NightSoftDark,
+			qColor("181c24"),
+			qColor("253040"),
+			qColor("1f232b"),
+			qColor("404856"),
+			qColor("6ba4d9"),
+			rpl::single(u"Soft Dark (Slate)"_q),
+			":/gui/night.tdesktop-theme",
+			qColor("5288c1")
+		},
 	};
 }
 
@@ -332,6 +386,18 @@ std::vector<QColor> DefaultAccentColors(EmbeddedType type) {
 			qColor("d27570"),
 			qColor("7b8799"),
 			qColor("cbac67"),
+		};
+	case EmbeddedType::NightPureBlack:
+	case EmbeddedType::NightSoftDark:
+		return {
+			qColor("58bfe8"),
+			qColor("466f42"),
+			qColor("aa6084"),
+			qColor("a46d3c"),
+			qColor("917bbd"),
+			qColor("ab5149"),
+			qColor("697b97"),
+			qColor("9b834b"),
 		};
 	}
 	Unexpected("Type in Window::Theme::AccentColors.");
