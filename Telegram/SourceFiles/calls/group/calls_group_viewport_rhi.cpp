@@ -17,6 +17,8 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "ui/rhi/rhi_shader.h"
 #include "ui/painter.h"
 #include "data/data_peer.h"
+#include "data/data_session.h"
+#include "history/history.h"
 #include "lang/lang_keys.h"
 #include "styles/style_calls.h"
 #include "styles/style_media_view.h"
@@ -91,22 +93,7 @@ static_assert(sizeof(ImageUniforms) == 16);
 		QSize unscaled,
 		QSize size,
 		float64 ratio) {
-	if (ratio == 0.) {
-		return NonEmpty(unscaled.scaled(size, Qt::KeepAspectRatio));
-	} else if (ratio == 1.) {
-		return NonEmpty(unscaled.scaled(
-			size,
-			Qt::KeepAspectRatioByExpanding));
-	}
-	const auto notExpanded = NonEmpty(unscaled.scaled(
-		size,
-		Qt::KeepAspectRatio));
-	const auto expanded = NonEmpty(unscaled.scaled(
-		size,
-		Qt::KeepAspectRatioByExpanding));
-	return QSize(
-		anim::interpolate(notExpanded.width(), expanded.width(), ratio),
-		anim::interpolate(notExpanded.height(), expanded.height(), ratio));
+	return NonEmpty(unscaled.scaled(size, Qt::KeepAspectRatio));
 }
 
 [[nodiscard]] std::array<std::array<float, 2>, 4> CountTexCoords(
@@ -1777,7 +1764,9 @@ void Viewport::RendererRhi::validateDatas() {
 void Viewport::RendererRhi::validateOutlineAnimation(
 		not_null<VideoTile*> tile,
 		TileData &data) {
-	const auto outline = tile->row()->speaking();
+	const auto peer = tile->row()->peer();
+	const auto history = peer->owner().historyLoaded(peer);
+	const auto outline = history && (history->unreadCount() > 0 || history->unreadMark());
 	if (data.outline == outline) {
 		return;
 	}

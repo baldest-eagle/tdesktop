@@ -46,6 +46,8 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "boxes/peers/edit_contact_box.h"
 #include "boxes/peers/prepare_short_info_box.h"
 #include "calls/calls_instance.h"
+#include "calls/group/calls_group_panel.h"
+#include "calls/group/calls_group_floating_overlay.h"
 #include "inline_bots/bot_attach_web_view.h" // InlineBots::PeerType.
 #include "ui/toast/toast.h"
 #include "ui/text/format_values.h"
@@ -298,6 +300,7 @@ private:
 
 	void addHidePromotion();
 	void addTogglePin();
+	void addAddToOverlay();
 	void addToggleMuteSubmenu(bool addSeparator);
 	void addSupportInfo();
 	void addInfo();
@@ -574,6 +577,23 @@ void Filler::addTogglePin() {
 		(entry->isPinnedDialog(filterId)
 			? &st::menuIconUnpin
 			: &st::menuIconPin));
+}
+
+void Filler::addAddToOverlay() {
+	if (!_peer) {
+		return;
+	}
+	const auto peer = _peer;
+	if (const auto call = Core::App().calls().currentGroupCall()) {
+		if (const auto panel = Core::App().calls().currentGroupCallPanel()) {
+			if (const auto overlay = panel->floatingOverlay()) {
+				_addAction(u"Add to Overlay"_q, [=] {
+					overlay->addChat(peer);
+					overlay->show();
+				}, &st::menuIconShowInChat);
+			}
+		}
+	}
 }
 
 void Filler::addToggleMuteSubmenu(bool addSeparator) {
@@ -1847,6 +1867,7 @@ void Filler::fillContextMenuActions() {
 	addHidePromotion();
 	addToggleArchive();
 	addTogglePin();
+	addAddToOverlay();
 	if (ViewProfileInChatsListContextMenu.value()) {
 		addInfo();
 	}
@@ -1868,6 +1889,7 @@ void Filler::fillContextMenuActions() {
 void Filler::fillHistoryActions() {
 	addToggleMuteSubmenu(true);
 	addCreateTopic();
+	addAddToOverlay();
 	addInfo();
 	addViewAsTopics();
 	addManageChat();

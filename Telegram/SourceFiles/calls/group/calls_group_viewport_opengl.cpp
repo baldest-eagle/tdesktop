@@ -16,6 +16,8 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "ui/gl/gl_shader.h"
 #include "ui/painter.h"
 #include "data/data_peer.h"
+#include "data/data_session.h"
+#include "history/history.h"
 #include "styles/style_calls.h"
 #include "styles/style_media_view.h"
 
@@ -251,24 +253,7 @@ vec4 background() {
 		QSize unscaled,
 		QSize size,
 		float64 ratio) {
-	if (ratio == 0.) {
-		return NonEmpty(unscaled.scaled(
-			size,
-			Qt::KeepAspectRatio));
-	} else if (ratio == 1.) {
-		return NonEmpty(unscaled.scaled(
-			size,
-			Qt::KeepAspectRatioByExpanding));
-	}
-	const auto notExpanded = NonEmpty(unscaled.scaled(
-		size,
-		Qt::KeepAspectRatio));
-	const auto expanded = NonEmpty(unscaled.scaled(
-		size,
-		Qt::KeepAspectRatioByExpanding));
-	return QSize(
-		anim::interpolate(notExpanded.width(), expanded.width(), ratio),
-		anim::interpolate(notExpanded.height(), expanded.height(), ratio));
+	return NonEmpty(unscaled.scaled(size, Qt::KeepAspectRatio));
 }
 
 [[nodiscard]] std::array<std::array<GLfloat, 2>, 4> CountTexCoords(
@@ -1450,7 +1435,9 @@ void Viewport::RendererGL::validateNoiseTexture(
 void Viewport::RendererGL::validateOutlineAnimation(
 		not_null<VideoTile*> tile,
 		TileData &data) {
-	const auto outline = tile->row()->speaking();
+	const auto peer = tile->row()->peer();
+	const auto history = peer->owner().historyLoaded(peer);
+	const auto outline = history && (history->unreadCount() > 0 || history->unreadMark());
 	if (data.outline == outline) {
 		return;
 	}

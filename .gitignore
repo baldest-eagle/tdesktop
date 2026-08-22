@@ -72,3 +72,10 @@ settings.local.json
 
 # Generated changelog page (built by CI, deployed to GitHub Pages)
 /docs/changelog/
+
+# Python cache & generated build files
+__pycache__/
+*.pyc
+lang_auto.*
+lang_auto_*
+

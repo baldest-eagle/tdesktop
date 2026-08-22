@@ -7,41 +7,42 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 */
 #include "calls/group/calls_group_members.h"
 
+#include "boxes/peers/edit_participants_box.h"
+#include "boxes/peers/prepare_short_info_box.h"
 #include "calls/group/calls_cover_item.h"
 #include "calls/group/calls_group_call.h"
-#include "calls/group/calls_group_menu.h"
-#include "calls/group/calls_volume_item.h"
 #include "calls/group/calls_group_members_row.h"
+#include "calls/group/calls_group_menu.h"
 #include "calls/group/calls_group_viewport.h"
+#include "calls/group/calls_volume_item.h"
 #include "calls/calls_emoji_fingerprint.h"
 #include "calls/calls_instance.h"
+#include "core/application.h"
+#include "data/data_changes.h"
 #include "data/data_channel.h"
 #include "data/data_chat.h"
-#include "data/data_user.h"
-#include "data/data_peer.h"
-#include "data/data_changes.h"
 #include "data/data_group_call.h"
-#include "data/data_peer_values.h" // Data::CanWriteValue.
-#include "data/data_session.h" // Data::Session::invitedToCallUsers.
+#include "data/data_peer.h"
+#include "data/data_peer_values.h"
+#include "data/data_session.h"
+#include "data/data_user.h"
+#include "info/profile/info_profile_values.h"
+#include "lang/lang_keys.h"
+#include "main/main_domain.h"
+#include "main/main_session.h"
 #include "settings/settings_common.h"
-#include "ui/widgets/buttons.h"
-#include "ui/widgets/scroll_area.h"
-#include "ui/widgets/popup_menu.h"
-#include "ui/effects/ripple_animation.h"
 #include "ui/effects/cross_line.h"
+#include "ui/effects/ripple_animation.h"
+#include "ui/widgets/fields/input_field.h"
+#include "ui/widgets/buttons.h"
+#include "ui/widgets/popup_menu.h"
+#include "ui/widgets/scroll_area.h"
 #include "ui/painter.h"
 #include "ui/power_saving.h"
-#include "core/application.h" // Core::App().domain, .activeWindow.
-#include "main/main_domain.h" // Core::App().domain().activate.
-#include "main/main_session.h"
-#include "lang/lang_keys.h"
-#include "info/profile/info_profile_values.h" // Info::Profile::NameValue.
-#include "boxes/peers/edit_participants_box.h" // SubscribeToMigration.
-#include "boxes/peers/prepare_short_info_box.h" // PrepareShortInfo...
-#include "window/window_controller.h" // Controller::sessionController.
-#include "window/window_session_controller.h"
 #include "webrtc/webrtc_video_track.h"
-#include "ui/widgets/fields/input_field.h"
+#include "window/window_controller.h"
+#include "window/window_session_controller.h"
+
 #include "styles/style_calls.h"
 
 namespace Calls::Group {
@@ -1416,20 +1417,9 @@ base::unique_qptr<Ui::PopupMenu> Members::Controller::createRowContextMenu(
 	}
 
 	if (const auto real = _call->lookupReal()) {
-		auto oneFound = false;
-		auto hasTwoOrMore = false;
 		const auto &shown = _call->shownVideoTracks();
-		for (const auto &[endpoint, track] : _call->activeVideoTracks()) {
-			if (shown.contains(endpoint)) {
-				if (oneFound) {
-					hasTwoOrMore = true;
-					break;
-				}
-				oneFound = true;
-			}
-		}
 		const auto participant = real->participantByPeer(participantPeer);
-		if (participant && hasTwoOrMore) {
+		if (participant) {
 			const auto &large = _call->videoEndpointLarge();
 			const auto pinned = _call->videoEndpointPinned();
 			const auto camera = VideoEndpoint{
@@ -1442,18 +1432,18 @@ base::unique_qptr<Ui::PopupMenu> Members::Controller::createRowContextMenu(
 				participantPeer,
 				computeScreenEndpoint(participant),
 			};
-			if (shown.contains(camera)) {
+			if (shown.contains(camera) || (pinned && large == camera)) {
 				if (pinned && large == camera) {
 					result->addAction(
 						tr::lng_group_call_context_unpin_camera(tr::now),
 						[=] { _call->pinVideoEndpoint({}); });
 				} else {
 					result->addAction(
-						tr::lng_group_call_context_pin_camera(tr::now),
+						tr::lng_group_call_context_pin_to_grid(tr::now),
 						[=] { _call->pinVideoEndpoint(camera); });
 				}
 			}
-			if (shown.contains(screen)) {
+			if (shown.contains(screen) || (pinned && large == screen)) {
 				if (pinned && large == screen) {
 					result->addAction(
 						tr::lng_group_call_context_unpin_screen(tr::now),
@@ -1531,6 +1521,10 @@ base::unique_qptr<Ui::PopupMenu> Members::Controller::createRowContextMenu(
 			result->addAction(
 				tr::lng_context_send_message(tr::now),
 				showHistory);
+		} else {
+			result->addAction(
+				tr::lng_group_call_open_chat(tr::now),
+				showHistory);
 		}
 		const auto canKick = [&] {
 			const auto user = participantPeer->asUser();
@@ -1546,7 +1540,7 @@ base::unique_qptr<Ui::PopupMenu> Members::Controller::createRowContextMenu(
 						&& chat->canBanMembers()
 						&& !chat->admins.contains(user));
 			} else if (const auto channel = _peer->asChannel()) {
-				return !participantPeer->isMegagroup() // That's the creator.
+				return !participantPeer->isMegagroup()
 					&& channel->canRestrictParticipant(participantPeer);
 			}
 			return false;
@@ -1975,19 +1969,18 @@ rpl::producer<int> Members::fullCountValue() const {
 void Members::setupList() {
 	_listController->setStyleOverrides(&st::groupCallMembersList);
 
-	// In-call username search bar at the top of the sidebar
 	const auto searchHeight = st::defaultInputField.heightMin + st::groupCallMembersTopSkip;
-	auto searchWrap = _layout->add(
+	const auto searchWrap = _layout->add(
 		object_ptr<Ui::FixedHeightWidget>(_layout.get(), searchHeight));
 	searchWrap->paintRequest(
 	) | rpl::on_next([=](QRect clip) {
 		QPainter(searchWrap).fillRect(clip, st::groupCallMembersBg);
 	}, searchWrap->lifetime());
 
-	auto searchField = Ui::CreateChild<Ui::InputField>(
+	const auto searchField = Ui::CreateChild<Ui::InputField>(
 		searchWrap,
 		st::defaultInputField,
-		rpl::single(QStringLiteral("Search username...")));
+		rpl::single(u"Search username..."_q));
 	searchWrap->sizeValue(
 	) | rpl::on_next([=](QSize size) {
 		const auto left = st::groupCallMembersMargin.left();

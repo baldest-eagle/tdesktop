@@ -1,0 +1,52 @@
+{
+  "total_tests": 659,
+  "passed": 659,
+  "failed": 0,
+  "errors": 0,
+  "total_duration_seconds": 0.482,
+  "summary_by_tier": {
+    "tier1_features": {
+      "total": 285,
+      "passed": 285,
+      "failed": 0,
+      "pass_rate": "100.0%"
+    },
+    "tier2_boundaries": {
+      "total": 285,
+      "passed": 285,
+      "failed": 0,
+      "pass_rate": "100.0%"
+    },
+    "tier3_combinations": {
+      "total": 60,
+      "passed": 60,
+      "failed": 0,
+      "pass_rate": "100.0%"
+    },
+    "tier4_scenarios": {
+      "total": 29,
+      "passed": 29,
+      "failed": 0,
+      "pass_rate": "100.0%"
+    }
+  },
+  "categories_covered": [
+    "Privacy & Ghost Mode (E3)",
+    "Network & Download (B1)",
+    "Call UI & Controls",
+    "Multi-Display & Routing",
+    "Grid Layout & Pin System",
+    "Floating Overlay",
+    "Embedded In-Meeting Chat & Search",
+    "Participant Sidebar & Search",
+    "Audio / Microphone",
+    "Main Menu & Navigation",
+    "UI Tweaks & Polish",
+    "Context Menus & Cross-UI",
+    "Backend / Engine",
+    "Build & Toolchain"
+  ],
+  "features_covered_count": 57,
+  "status": "ALL_PASSED",
+  "exit_code": 0
+}

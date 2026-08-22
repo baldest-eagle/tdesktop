@@ -7,8 +7,8 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 */
 #pragma once
 
-#include "ui/rp_widget.h"
 #include "ui/effects/animations.h"
+#include "ui/rp_widget.h"
 
 class Painter;
 class QOpenGLFunctions;
@@ -104,10 +104,15 @@ public:
 	void remove(const VideoEndpoint &endpoint);
 	void showLarge(const VideoEndpoint &endpoint);
 
+	struct PinToggle {
+		VideoEndpoint endpoint;
+		bool pinned = false;
+	};
+
 	[[nodiscard]] bool requireARGB32() const;
 	[[nodiscard]] int fullHeight() const;
 	[[nodiscard]] rpl::producer<int> fullHeightValue() const;
-	[[nodiscard]] rpl::producer<bool> pinToggled() const;
+	[[nodiscard]] rpl::producer<PinToggle> pinToggled() const;
 	[[nodiscard]] rpl::variable<bool> gridModeValue() const;
 	[[nodiscard]] rpl::producer<VideoEndpoint> clicks() const;
 	[[nodiscard]] rpl::producer<VideoQualityRequest> qualityRequests() const;
@@ -224,7 +229,7 @@ private:
 	int _scrollTop = 0;
 	QImage _shadow;
 	rpl::event_stream<VideoEndpoint> _clicks;
-	rpl::event_stream<bool> _pinToggles;
+	rpl::event_stream<PinToggle> _pinToggles;
 	rpl::event_stream<VideoQualityRequest> _qualityRequests;
 	float64 _controlsShownRatio = 1.;
 	VideoTile *_large = nullptr;

@@ -859,7 +859,7 @@ void Panel::refreshVideoButtons(std::optional<bool> overrideWideMode) {
 	if (!_gridModeButton) {
 		_gridModeButton.create(widget(), st::groupCallScreenShareSmall);
 		_gridModeButton->show();
-		_gridModeButton->setAccessibleName(QStringLiteral("Grid View (1x1, 2x2, 3x3)"));
+		_gridModeButton->setAccessibleName(u"Grid View (1x1, 2x2, 3x3)"_q);
 		_gridModeButton->setClickedCallback([=] {
 			const auto gridOn = !_viewport->gridModeValue().current();
 			_viewport->setGridMode(gridOn);
@@ -879,7 +879,7 @@ void Panel::refreshVideoButtons(std::optional<bool> overrideWideMode) {
 	if (!_chatToggle) {
 		_chatToggle.create(widget(), st::groupCallMessageSmall);
 		_chatToggle->show();
-		_chatToggle->setAccessibleName(QStringLiteral("Toggle Floating Chat"));
+		_chatToggle->setAccessibleName(u"Toggle Floating Chat"_q);
 		_chatToggle->setClickedCallback([=] {
 			if (_floatingOverlay) {
 				_floatingOverlay->toggle();
@@ -1427,10 +1427,10 @@ void Panel::setupVideo(not_null<Viewport*> viewport) {
 	}, viewport->lifetime());
 
 	viewport->pinToggled(
-	) | rpl::on_next([=](bool pinned) {
-		const auto target = _call->videoEndpointLarge();
+	) | rpl::on_next([=](const Viewport::PinToggle &toggle) {
+		const auto target = toggle.endpoint;
 		if (target) {
-			if (pinned) {
+			if (toggle.pinned) {
 				promptPinTargetScreen(target);
 			} else {
 				if (_displayCoordinator) {
@@ -1438,6 +1438,9 @@ void Panel::setupVideo(not_null<Viewport*> viewport) {
 					_displayCoordinator->unpinFromScreen(1, target);
 				}
 				_viewport->togglePin(target, false);
+				if (_call->videoEndpointLarge() == target) {
+					_call->pinVideoEndpoint({});
+				}
 			}
 		}
 	}, viewport->lifetime());
@@ -1473,25 +1476,28 @@ void Panel::promptPinTargetScreen(const VideoEndpoint &endpoint) {
 	auto box = Box([=](not_null<Ui::GenericBox*> box) {
 		const auto isPinnedS0 = _displayCoordinator && _displayCoordinator->isPinnedOnScreen(0, endpoint);
 		const auto isPinnedS1 = _displayCoordinator && _displayCoordinator->isPinnedOnScreen(1, endpoint);
+		const auto isPinnedViewport = _viewport && _viewport->isPinned(endpoint);
+		const auto isPinnedCall = _call->videoEndpointPinned() && (_call->videoEndpointLarge() == endpoint);
+		const auto isPinnedAny = isPinnedS0 || isPinnedS1 || isPinnedViewport || isPinnedCall;
 
-		box->setTitle(rpl::single((isPinnedS0 || isPinnedS1)
-			? QStringLiteral("Manage Pinned Screen")
-			: QStringLiteral("Pin Camera to Screen")));
+		box->setTitle(rpl::single(isPinnedAny
+			? u"Manage Pinned Screen"_q
+			: u"Pin Camera to Screen"_q));
 		box->addRow(
 			object_ptr<Ui::FlatLabel>(
 				box.get(),
-				QStringLiteral("Choose target screen for ") + endpoint.peer->name() + QStringLiteral(":"),
+				u"Choose target screen for "_q + endpoint.peer->name() + u":"_q,
 				st::groupCallBoxLabel));
 
-		if (isPinnedS0 || isPinnedS1) {
-			box->addButton(rpl::single(QStringLiteral("Unpin (Return to Main Grid)")), [=] {
+		if (isPinnedAny) {
+			box->addButton(rpl::single(u"Unpin (Return to Main Grid)"_q), [=] {
 				box->closeBox();
 				if (_displayCoordinator) {
 					_displayCoordinator->unpinFromScreen(0, endpoint);
 					_displayCoordinator->unpinFromScreen(1, endpoint);
 				}
-				// Restore to main grid
 				if (_viewport) {
+					_viewport->togglePin(endpoint, false);
 					const auto &t = _call->activeVideoTracks();
 					const auto it = t.find(endpoint);
 					if (it != t.end()) {
@@ -1503,10 +1509,13 @@ void Panel::promptPinTargetScreen(const VideoEndpoint &endpoint) {
 							isSelf);
 					}
 				}
+				if (_call->videoEndpointLarge() == endpoint) {
+					_call->pinVideoEndpoint({});
+				}
 			});
 		}
 
-		box->addButton(rpl::single(QStringLiteral("Screen 1 (Stage Window)")), [=] {
+		box->addButton(rpl::single(u"Screen 1 (Stage Window)"_q), [=] {
 			box->closeBox();
 			if (_displayCoordinator) {
 				_displayCoordinator->pinToScreen(
@@ -1516,13 +1525,12 @@ void Panel::promptPinTargetScreen(const VideoEndpoint &endpoint) {
 					GroupCall::TrackSizeValue(it->second),
 					isSelf);
 			}
-			// Remove from main grid view
 			if (_viewport) {
 				_viewport->remove(endpoint);
 			}
 		});
 
-		box->addButton(rpl::single(QStringLiteral("Screen 2 (2nd Monitor)")), [=] {
+		box->addButton(rpl::single(u"Screen 2 (2nd Monitor)"_q), [=] {
 			box->closeBox();
 			if (_displayCoordinator) {
 				_displayCoordinator->pinToScreen(
@@ -1532,7 +1540,6 @@ void Panel::promptPinTargetScreen(const VideoEndpoint &endpoint) {
 					GroupCall::TrackSizeValue(it->second),
 					isSelf);
 			}
-			// Remove from main grid view
 			if (_viewport) {
 				_viewport->remove(endpoint);
 			}

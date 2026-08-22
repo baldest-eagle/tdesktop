@@ -9,10 +9,10 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 
 #include "base/object_ptr.h"
 #include "base/unique_qptr.h"
-#include "ui/rp_widget.h"
 #include "calls/group/calls_group_call.h"
 #include "calls/group/calls_group_common.h"
 #include "calls/group/calls_group_viewport.h"
+#include "ui/rp_widget.h"
 
 #include <QtGui/QScreen>
 

@@ -11,6 +11,8 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "calls/group/calls_group_viewport_tile.h"
 #include "calls/group/calls_group_members_row.h"
 #include "data/data_peer.h"
+#include "data/data_session.h"
+#include "history/history.h"
 #include "media/view/media_view_pip.h"
 #include "webrtc/webrtc_video_track.h"
 #include "ui/image/image_prepare.h"
@@ -186,7 +188,10 @@ void Viewport::RendererSW::paintTileOutline(
 		int width,
 		int height,
 		not_null<VideoTile*> tile) {
-	if (!tile->row()->speaking()) {
+	const auto peer = tile->row()->peer();
+	const auto history = peer->owner().historyLoaded(peer);
+	const auto hasUnread = history && (history->unreadCount() > 0 || history->unreadMark());
+	if (!hasUnread) {
 		return;
 	}
 	const auto outline = st::groupCallOutline;

@@ -25,12 +25,11 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "data/data_session.h"
 #include "data/data_stories.h"
 #include "data/data_user.h"
-#include "info/info_memento.h"
 #include "info/profile/info_profile_badge.h"
-#include "settings/settings_common.h"
 #include "info/profile/info_profile_emoji_status_panel.h"
 #include "info/profile/info_profile_icon.h"
 #include "info/stories/info_stories_widget.h"
+#include "info/info_memento.h"
 #include "lang/lang_keys.h"
 #include "main/main_account.h"
 #include "main/main_domain.h"
@@ -40,6 +39,7 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "settings/sections/settings_advanced.h"
 #include "settings/sections/settings_calls.h"
 #include "settings/sections/settings_information.h"
+#include "settings/settings_common.h"
 #include "storage/localstorage.h"
 #include "storage/storage_account.h"
 #include "support/support_templates.h"
@@ -67,7 +67,8 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "window/window_main_menu_helpers.h"
 #include "window/window_peer_menu.h"
 #include "window/window_session_controller.h"
-#include "styles/style_chat.h" // popupMenuExpandedSeparator
+
+#include "styles/style_chat.h"
 #include "styles/style_menu_icons.h"
 #include "styles/style_settings.h"
 #include "styles/style_window.h"
@@ -700,11 +701,16 @@ void MainMenu::setupMenu() {
 		)->setClickedCallback([=] {
 			controller->show(PrepareContactsBox(controller));
 		});
-		addAction(
+		const auto calls = addAction(
 			tr::lng_menu_calls(),
 			{ &st::menuIconPhone }
-		)->setClickedCallback([=] {
-			::Calls::ShowCallsBox(controller);
+		);
+		calls->setClickedCallback([=] {
+			_contextMenu = base::make_unique_q<Ui::PopupMenu>(
+				calls,
+				st::popupMenuWithIcons);
+			::Calls::ShowCallsMenu(_contextMenu.get(), controller);
+			_contextMenu->popup(QCursor::pos());
 		});
 		addAction(
 			tr::lng_saved_messages(),

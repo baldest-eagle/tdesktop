@@ -103,6 +103,12 @@ public:
 	[[nodiscard]] not_null<Window*> callWindow() const;
 	[[nodiscard]] not_null<Ui::RpWindow*> window() const;
 
+	[[nodiscard]] FloatingOverlay *floatingOverlay() const {
+		return _floatingOverlay.get();
+	}
+
+	void promptPinTargetScreen(const VideoEndpoint &endpoint);
+
 	rpl::lifetime &lifetime();
 
 private:

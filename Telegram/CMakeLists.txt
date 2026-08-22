@@ -1881,6 +1881,7 @@ PRIVATE
     storage/storage_shared_media.h
     storage/storage_sparse_ids_list.cpp
     storage/storage_sparse_ids_list.h
+    storage/storage_sqlite_pragmas.h
     storage/storage_user_photos.cpp
     storage/storage_user_photos.h
     storage/streamed_file_downloader.cpp

@@ -12,11 +12,7 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include <QtWidgets/QWidget>
 #include <QtWidgets/QShortcut>
 
-namespace Ui {
-class RpWidget;
-class FlatLabel;
-class IconButton;
-} // namespace Ui
+class PeerData;
 
 namespace Calls::Group {
 
@@ -32,6 +28,10 @@ public:
 	void hide();
 	void toggle();
 
+	void addChat(not_null<PeerData*> peer);
+	void removeChat(PeerData *peer);
+	void setActiveTab(int index);
+
 	[[nodiscard]] bool isVisible() const;
 
 protected:
@@ -44,25 +44,58 @@ protected:
 	void resizeEvent(QResizeEvent *event) override;
 
 private:
+	struct OverlayTab {
+		PeerData *peer = nullptr;
+		QString name;
+	};
+
+	struct TabRect {
+		QRect rect;
+		QRect closeRect;
+	};
+
+	struct SearchResult {
+		not_null<PeerData*> peer;
+		QString name;
+		QRect rowRect;
+		QRect openChatRect;
+		QRect pinScreenRect;
+		QRect addOverlayRect;
+	};
+
 	void setupUI();
 	void updateGeometry();
 	void togglePassthrough();
+	void toggleSearch();
 	void setupChatContent();
+	void updateTabRects();
+	void updateSearchResults();
 
-	not_null<Panel*> _panel;
+	const not_null<Panel*> _panel;
 	bool _dragging = false;
 	QPoint _dragStart;
 	QRect _startGeometry;
 	bool _passthrough = false;
 
-	// Opacity control
 	float _opacity = 0.7f;
 
-	// Shortcut
 	QShortcut *_toggleShortcut = nullptr;
 
-	// Chat content
+	object_ptr<Ui::FlatLabel> _title = { nullptr };
+	object_ptr<Ui::IconButton> _closeBtn = { nullptr };
+	object_ptr<Ui::IconButton> _passthroughBtn = { nullptr };
+	object_ptr<Ui::IconButton> _searchBtn = { nullptr };
+
 	std::unique_ptr<MessagesUi> _messagesUi;
+
+	std::vector<OverlayTab> _tabs;
+	int _activeTabIndex = 0;
+	std::vector<TabRect> _tabRects;
+	rpl::lifetime _tabLifetime;
+
+	bool _searchOpen = false;
+	QString _searchQuery;
+	std::vector<SearchResult> _searchResults;
 
 };
 

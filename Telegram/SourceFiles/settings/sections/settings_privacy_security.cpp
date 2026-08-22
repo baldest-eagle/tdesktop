@@ -1086,7 +1086,7 @@ void BuildTopPeersSection(SectionBuilder &builder) {
 }
 
 void BuildGhostModeSection(SectionBuilder &builder) {
-	const auto settings = Core::App().settings();
+	const auto settings = &Core::App().settings();
 
 	builder.addSkip();
 	builder.addSubsectionTitle({

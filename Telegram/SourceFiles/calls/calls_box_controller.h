@@ -8,15 +8,14 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #pragma once
 
 #include "boxes/peer_list_box.h"
-#include "ui/layers/generic_box.h"
 #include "mtproto/sender.h"
+#include "ui/layers/generic_box.h"
 
 namespace Window {
 class SessionController;
 } // namespace Window
 
-namespace Calls {
-namespace GroupCalls {
+namespace Calls::GroupCalls {
 
 class ListController : public PeerListController {
 public:
@@ -36,7 +35,9 @@ private:
 
 };
 
-} // namespace GroupCalls
+} // namespace Calls::GroupCalls
+
+namespace Calls {
 
 class BoxController : public PeerListController {
 public:
@@ -72,7 +73,7 @@ private:
 	MTP::Sender _api;
 
 	MsgId _offsetId = 0;
-	int _loadRequestId = 0; // Not a real mtpRequestId.
+	int _loadRequestId = 0;
 	bool _allLoaded = false;
 
 };
@@ -84,5 +85,9 @@ void ClearCallsBox(
 void ShowCallsBox(
 	not_null<::Window::SessionController*> window,
 	bool highlightStartCall = false);
+
+void ShowCallsMenu(
+	not_null<Ui::PopupMenu*> menu,
+	not_null<::Window::SessionController*> window);
 
 } // namespace Calls

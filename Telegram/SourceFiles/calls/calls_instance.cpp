@@ -944,6 +944,10 @@ GroupCall *Instance::currentGroupCall() const {
 	return _currentGroupCall.get();
 }
 
+Group::Panel *Instance::currentGroupCallPanel() const {
+	return _currentGroupCallPanel.get();
+}
+
 rpl::producer<GroupCall*> Instance::currentGroupCallValue() const {
 	return _currentGroupCallChanges.events_starting_with(currentGroupCall());
 }

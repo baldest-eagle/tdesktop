@@ -7,32 +7,33 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 */
 #include "calls/group/calls_group_viewport.h"
 
-#include "calls/group/calls_group_viewport_tile.h"
+#include "base/platform/base_platform_info.h"
+#include "calls/group/calls_group_call.h"
+#include "calls/group/calls_group_common.h"
+#include "calls/group/calls_group_members_row.h"
 #include "calls/group/calls_group_viewport_opengl.h"
 #include "calls/group/calls_group_viewport_raster.h"
 #if QT_VERSION >= QT_VERSION_CHECK(6, 7, 0)
 #include "calls/group/calls_group_viewport_rhi.h"
 #include "ui/rhi/rhi_renderer.h"
 #endif
-#include "calls/group/calls_group_common.h"
-#include "calls/group/calls_group_call.h"
-#include "calls/group/calls_group_members_row.h"
+#include "calls/group/calls_group_viewport_tile.h"
+#include "data/data_group_call.h"
+#include "lang/lang_keys.h"
 #include "media/view/media_view_pip.h"
-#include "base/platform/base_platform_info.h"
-#include "webrtc/webrtc_video_track.h"
-#include "ui/integration.h"
-#include "ui/painter.h"
-#include "ui/abstract_button.h"
-#include "ui/gl/gl_surface.h"
 #include "ui/effects/animations.h"
 #include "ui/effects/cross_line.h"
-#include "data/data_group_call.h" // MuteButtonTooltip.
-#include "lang/lang_keys.h"
-#include "styles/style_calls.h"
+#include "ui/gl/gl_surface.h"
+#include "ui/abstract_button.h"
+#include "ui/integration.h"
+#include "ui/painter.h"
+#include "webrtc/webrtc_video_track.h"
 
-#include <QOpenGLShader>
 #include <QtGui/QtEvents>
+#include <QOpenGLShader>
 #include <QOpenGLWidget>
+
+#include "styles/style_calls.h"
 
 namespace Calls::Group {
 namespace {
@@ -218,12 +219,16 @@ void Viewport::handleMouseRelease(QPoint position, Qt::MouseButton button) {
 				return;
 			} else if (button == Qt::RightButton) {
 				tile->row()->showContextMenu();
-			} else if (!wide()
-				|| (_hasTwoOrMore && !_large)
-				|| pressed.element != Selection::Element::PinButton) {
-				_clicks.fire_copy(tile->endpoint());
 			} else if (pressed.element == Selection::Element::PinButton) {
-				_pinToggles.fire(!tile->pinned());
+				const auto shouldPin = !isPinned(tile->endpoint());
+				togglePin(tile->endpoint(), shouldPin);
+				_pinToggles.fire({ tile->endpoint(), shouldPin });
+			} else if (pressed.element == Selection::Element::BackButton) {
+				togglePin(tile->endpoint(), false);
+				_pinToggles.fire({ tile->endpoint(), false });
+			} else if (!wide()
+				|| (_hasTwoOrMore && !_large)) {
+				_clicks.fire_copy(tile->endpoint());
 			}
 		}
 	}
@@ -512,7 +517,6 @@ Viewport::Layout Viewport::countWide(int outerWidth, int outerHeight) const {
 	auto &sizes = result.list;
 	sizes.reserve(_tiles.size());
 
-	// Allocate pinned tiles to fixed leading slots first
 	for (const auto &pinned : _pinnedEndpoints) {
 		for (const auto &tile : _tiles) {
 			if (tile->endpoint() == pinned) {
@@ -526,9 +530,7 @@ Viewport::Layout Viewport::countWide(int outerWidth, int outerHeight) const {
 		}
 	}
 
-	// Fill remaining slots with unpinned active tiles sorted chronologically by entryTime
-	// (oldest in Slot 0 top-left, newest in bottom-right)
-	std::vector<not_null<VideoTile*>> unpinnedTiles;
+	auto unpinnedTiles = std::vector<not_null<VideoTile*>>();
 	for (const auto &tile : _tiles) {
 		const auto isPinned = ranges::contains(_pinnedEndpoints, tile->endpoint());
 		if (!isPinned) {
@@ -558,6 +560,19 @@ Viewport::Layout Viewport::countWide(int outerWidth, int outerHeight) const {
 	const auto skip = st::groupCallVideoLargeSkip;
 
 	const auto slotConstraint = _slotCount.current();
+	if (count == 2 && slotConstraint == 0) {
+		const auto halfW = (outerWidth - skip) / 2;
+		sizes[0].columns = sizes[0].rows = { 0, 0, halfW, outerHeight };
+		sizes[1].columns = sizes[1].rows = {
+			halfW + skip,
+			0,
+			outerWidth - halfW - skip,
+			outerHeight,
+		};
+		result.useColumns = true;
+		return result;
+	}
+
 	const auto fixedGridDim = (slotConstraint == 1)
 		? 1
 		: (slotConstraint == 4)
@@ -573,15 +588,6 @@ Viewport::Layout Viewport::countWide(int outerWidth, int outerHeight) const {
 		const auto visibleCount = std::min(count, maxVisible);
 		const auto cellW = (outerWidth - (cols - 1) * skip) / float64(cols);
 		const auto cellH = (outerHeight - (rows - 1) * skip) / float64(rows);
-
-		// Special case: 2 feeds -> 50/50 split across the screen
-		if (count == 2 && slotConstraint == 0) {
-			const auto halfW = (outerWidth - skip) / 2;
-			sizes[0].columns = sizes[0].rows = { 0, 0, halfW, outerHeight };
-			sizes[1].columns = sizes[1].rows = { halfW + skip, 0, halfW, outerHeight };
-			result.useColumns = true;
-			return result;
-		}
 
 		for (auto i = 0; i != count; ++i) {
 			auto &geometry = sizes[i];
@@ -674,6 +680,9 @@ Viewport::Layout Viewport::countWide(int outerWidth, int outerHeight) const {
 
 void Viewport::showLarge(const VideoEndpoint &endpoint) {
 	if (_borrowed) {
+		return;
+	}
+	if (!_pinnedEndpoints.empty() && endpoint && !isPinned(endpoint)) {
 		return;
 	}
 
@@ -1020,7 +1029,7 @@ rpl::producer<int> Viewport::fullHeightValue() const {
 	return _fullHeight.value();
 }
 
-rpl::producer<bool> Viewport::pinToggled() const {
+rpl::producer<Viewport::PinToggle> Viewport::pinToggled() const {
 	return _pinToggles.events();
 }
 
@@ -1168,53 +1177,24 @@ rpl::lifetime &Viewport::lifetime() {
 }
 
 rpl::producer<QString> MuteButtonTooltip(not_null<GroupCall*> call) {
-	//return rpl::single(std::make_tuple(
-	//	(Data::GroupCall*)nullptr,
-	//	call->scheduleDate()
-	//)) | rpl::then(call->real(
-	//) | rpl::map([](not_null<Data::GroupCall*> real) {
-	//	using namespace rpl::mappers;
-	//	return real->scheduleDateValue(
-	//	) | rpl::map([=](TimeId scheduleDate) {
-	//		return std::make_tuple(real.get(), scheduleDate);
-	//	});
-	//}) | rpl::flatten_latest(
-	//)) | rpl::map([=](
-	//		Data::GroupCall *real,
-	//		TimeId scheduleDate) -> rpl::producer<QString> {
-	//	if (scheduleDate) {
-	//		return rpl::combine(
-	//			call->canManageValue(),
-	//			(real
-	//				? real->scheduleStartSubscribedValue()
-	//				: rpl::single(false))
-	//		) | rpl::map([](bool canManage, bool subscribed) {
-	//			return canManage
-	//				? tr::lng_group_call_start_now()
-	//				: subscribed
-	//				? tr::lng_group_call_cancel_reminder()
-	//				: tr::lng_group_call_set_reminder();
-	//		}) | rpl::flatten_latest();
-	//	}
 	if (call->rtmp()) {
 		return nullptr;
 	}
-		return call->mutedValue(
-		) | rpl::map([](MuteState muted) {
-			switch (muted) {
-			case MuteState::Active:
-			case MuteState::PushToTalk:
-				return tr::lng_group_call_you_are_live();
-			case MuteState::ForceMuted:
-				return tr::lng_group_call_tooltip_force_muted();
-			case MuteState::RaisedHand:
-				return tr::lng_group_call_tooltip_raised_hand();
-			case MuteState::Muted:
-				return tr::lng_group_call_tooltip_microphone();
-			}
-			Unexpected("Value in MuteState in showNiceTooltip.");
-		}) | rpl::flatten_latest();
-	//}) | rpl::flatten_latest();
+	return call->mutedValue(
+	) | rpl::map([](MuteState muted) {
+		switch (muted) {
+		case MuteState::Active:
+		case MuteState::PushToTalk:
+			return tr::lng_group_call_you_are_live();
+		case MuteState::ForceMuted:
+			return tr::lng_group_call_tooltip_force_muted();
+		case MuteState::RaisedHand:
+			return tr::lng_group_call_tooltip_raised_hand();
+		case MuteState::Muted:
+			return tr::lng_group_call_tooltip_microphone();
+		}
+		Unexpected("Value in MuteState in showNiceTooltip.");
+	}) | rpl::flatten_latest();
 }
 
 } // namespace Calls::Group

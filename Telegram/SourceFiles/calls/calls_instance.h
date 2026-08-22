@@ -111,6 +111,7 @@ public:
 	[[nodiscard]] Call *currentCall() const;
 	[[nodiscard]] rpl::producer<Call*> currentCallValue() const;
 	[[nodiscard]] GroupCall *currentGroupCall() const;
+	[[nodiscard]] Group::Panel *currentGroupCallPanel() const;
 	[[nodiscard]] rpl::producer<GroupCall*> currentGroupCallValue() const;
 	[[nodiscard]] bool inCall() const;
 	[[nodiscard]] bool inGroupCall() const;

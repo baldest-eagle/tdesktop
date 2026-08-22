@@ -9,21 +9,22 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 
 #include "calls/group/calls_group_viewport.h"
 #include "ui/widgets/labels.h"
-#include "styles/style_calls.h"
 
 #include <QtGui/QGuiApplication>
 #include <QtGui/QScreen>
 #include <QtWidgets/QWidget>
+
+#include "styles/style_calls.h"
 
 namespace Calls::Group {
 namespace {
 
 [[nodiscard]] QString RoleText(DisplayRole role) {
 	switch (role) {
-	case DisplayRole::ActiveSpeaker: return "Active Speaker";
-	case DisplayRole::GridViewport: return "Grid View";
-	case DisplayRole::ChatStation: return "Chat Station";
-	default: return "";
+	case DisplayRole::ActiveSpeaker: return u"Active Speaker"_q;
+	case DisplayRole::GridViewport: return u"Grid View"_q;
+	case DisplayRole::ChatStation: return u"Chat Station"_q;
+	default: return QString();
 	}
 }
 
@@ -49,7 +50,6 @@ DisplayCoordinator::DisplayCoordinator(
 		updateScreens();
 	});
 
-	// Detect existing screens on startup
 	updateScreens();
 }
 
@@ -64,7 +64,7 @@ void DisplayCoordinator::updateScreens() {
 	const auto primary = app->primaryScreen();
 
 	std::set<int> currentIndices;
-	for (int i = 0; i < screens.size(); ++i) {
+	for (auto i = 0; i != screens.size(); ++i) {
 		if (screens[i] == primary) {
 			continue;
 		}
@@ -80,7 +80,7 @@ void DisplayCoordinator::updateScreens() {
 			toRemove.push_back(entry.first);
 		}
 	}
-	for (int idx : toRemove) {
+	for (const auto idx : toRemove) {
 		destroyDisplayWindow(idx);
 	}
 
@@ -98,7 +98,6 @@ void DisplayCoordinator::createDisplayWindow(int displayIndex, QScreen *screen) 
 	display.screen = screen;
 	display.role = DisplayRole::GridViewport;
 
-	// Create a top-level window for this display
 	display.widget = base::make_unique_q<QWidget>(
 		nullptr,
 		Qt::Window | Qt::FramelessWindowHint);
@@ -110,7 +109,6 @@ void DisplayCoordinator::createDisplayWindow(int displayIndex, QScreen *screen) 
 	display.widget->setWindowTitle(RoleText(display.role));
 	display.widget->setAttribute(Qt::WA_OpaquePaintEvent);
 
-	// Create a Viewport for this display
 	display.viewport = std::make_unique<Viewport>(
 		display.widget.get(),
 		PanelMode::Wide,
@@ -121,20 +119,17 @@ void DisplayCoordinator::createDisplayWindow(int displayIndex, QScreen *screen) 
 		return;
 	}
 
-	// Position on the target screen
 	const auto screenGeo = screen->geometry();
 	display.widget->setGeometry(screenGeo);
 	display.viewport->widget()->show();
 	display.widget->show();
 	display.widget->raise();
 
-	// Connect quality requests from this viewport
 	display.viewport->qualityRequests(
 	) | rpl::on_next([=](const VideoQualityRequest &request) {
 		_qualityRequests.fire_copy(request.endpoint);
 	}, display.viewport->lifetime());
 
-	// Set up content
 	setupWindowGeometry(display);
 }
 
@@ -151,7 +146,6 @@ void DisplayCoordinator::destroyDisplayWindow(int displayIndex) {
 		it->second.widget.reset();
 	}
 	_displays.erase(it);
-	// Clean up routed endpoints for this display
 	_routedEndpoints.erase(displayIndex);
 }
 
@@ -168,7 +162,6 @@ void DisplayCoordinator::setupWindowGeometry(DisplayWindow &display) {
 	const auto geo = screen->availableGeometry();
 	display.widget->setGeometry(geo);
 
-	// Set viewport geometry to fill the widget
 	display.viewport->setGeometry(false, QRect(0, 0, geo.width(), geo.height()));
 }
 

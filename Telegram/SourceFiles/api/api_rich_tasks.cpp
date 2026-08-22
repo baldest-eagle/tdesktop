@@ -83,7 +83,6 @@ void RichTasks::sendAccumulated() {
 void RichTasks::send(FullMsgId itemId, Accumulated &entry) {
 	const auto item = _session->data().message(itemId);
 	if (!item) {
-		_entries.remove(itemId);
 		return;
 	}
 	entry.dirty = false;

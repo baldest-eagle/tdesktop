@@ -292,7 +292,6 @@ QByteArray Settings::serialize() const {
 		+ sizeof(qint32) // _hardwareAcceleratedVideo
 		+ sizeof(qint32) // _suggestAnimatedEmoji
 		+ sizeof(qint32) // _cornerReaction
-		+ sizeof(qint32) // _ghostMode
 		+ sizeof(qint32) // _translateButtonEnabled
 		+ sizeof(qint32) // skipLanguages count
 		+ (skipLanguages.size() * sizeof(quint64))
@@ -346,7 +345,8 @@ QByteArray Settings::serialize() const {
 	size += sizeof(qint32) // _audioPlaybackSpeed
 		+ sizeof(qint32) // _mediaGridZoomStep
 		+ sizeof(qint32) // _pullToNextChannel
-		+ sizeof(qint32); // _chatFiltersTabsMode
+		+ sizeof(qint32) // _chatFiltersTabsMode
+		+ sizeof(qint32); // _ghostMode
 
 	auto result = QByteArray();
 	result.reserve(size);
@@ -461,7 +461,6 @@ QByteArray Settings::serialize() const {
 			<< qint32(_hardwareAcceleratedVideo ? 1 : 0)
 			<< qint32(_suggestAnimatedEmoji ? 1 : 0)
 			<< qint32(_cornerReaction.current() ? 1 : 0)
-			<< qint32(_ghostMode.current() ? 1 : 0)
 			<< qint32(_translateButtonEnabled ? 1 : 0)
 
 		stream
@@ -525,6 +524,7 @@ QByteArray Settings::serialize() const {
 		stream << qint32(_mediaGridZoomStep);
 		stream << qint32(_pullToNextChannel.current() ? 1 : 0);
 		stream << qint32(_chatFiltersTabsMode.current());
+		stream << qint32(_ghostMode.current() ? 1 : 0);
 	}
 
 	Ensures(result.size() == size);
@@ -867,9 +867,6 @@ void Settings::addFromSerialized(const QByteArray &serialized) {
 		stream >> cornerReaction;
 	}
 	if (!stream.atEnd()) {
-		stream >> ghostMode;
-	}
-	if (!stream.atEnd()) {
 		stream >> legacySkipTranslationForLanguage;
 	}
 	if (!stream.atEnd()) {
@@ -1057,6 +1054,9 @@ void Settings::addFromSerialized(const QByteArray &serialized) {
 	}
 	if (!stream.atEnd()) {
 		stream >> chatFiltersTabsMode;
+	}
+	if (!stream.atEnd()) {
+		stream >> ghostMode;
 	}
 	if (stream.status() != QDataStream::Ok) {
 		LOG(("App Error: "
