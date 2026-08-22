@@ -763,10 +763,34 @@ int InnerWidget::filteredHeight(int till) const {
 		: (_filterResults.back().top + _filterResults.back().row->height());
 }
 
+bool InnerWidget::hasPeerSearchResults() const {
+	if (_peerSearchResults.empty()) {
+		return false;
+	}
+	return (_searchState.tab == ChatSearchTab::Global)
+		|| (_searchState.tab == ChatSearchTab::All && !_searchState.inChat);
+}
+
+bool InnerWidget::hasFilterResults() const {
+	if (_filterResults.empty()) {
+		return false;
+	}
+	return (_searchState.tab != ChatSearchTab::Messages)
+		&& (_searchState.tab != ChatSearchTab::Global)
+		&& (_searchState.tab != ChatSearchTab::MediaFiles);
+}
+
+bool InnerWidget::hasSearchResults() const {
+	if (_searchResults.empty()) {
+		return false;
+	}
+	return (_searchState.tab != ChatSearchTab::ChatsPeople)
+		&& (_searchState.tab != ChatSearchTab::Global);
+}
+
 int InnerWidget::peerSearchOffset() const {
 	return filteredOffset()
-		+ filteredHeight()
-		+ st::searchedBarHeight;
+		+ (hasFilterResults() ? (filteredHeight() + st::searchedBarHeight) : 0);
 }
 
 int InnerWidget::searchInChatOffset() const {
@@ -779,7 +803,7 @@ int InnerWidget::searchInChatSkip() const {
 
 int InnerWidget::previewOffset() const {
 	auto result = peerSearchOffset();
-	if (!_peerSearchResults.empty()) {
+	if (hasPeerSearchResults()) {
 		result += (_peerSearchResults.size() * st::dialogsRowHeight)
 			+ st::searchedBarHeight;
 	}
@@ -1450,7 +1474,7 @@ void InnerWidget::paintEvent(QPaintEvent *e) {
 				}
 			}
 		}
-		if (!_filterResults.empty()) {
+		if (hasFilterResults()) {
 			auto skip = filteredOffset();
 			auto from = filteredIndex(r.y() - skip);
 			auto to = std::min(
@@ -1468,7 +1492,7 @@ void InnerWidget::paintEvent(QPaintEvent *e) {
 			}
 		}
 
-		if (!_peerSearchResults.empty()) {
+		if (hasPeerSearchResults()) {
 			p.fillRect(0, 0, fullWidth, st::searchedBarHeight, st::searchedBarBg);
 			p.setFont(st::searchedBarFont);
 			p.setPen(st::searchedBarFg);
@@ -5173,15 +5197,25 @@ void InnerWidget::updateSearchIn() {
 		: nullptr;
 	const auto fromName = _searchFromShown
 		? _searchFromShown->shortName()
-		: QString();
-	_searchIn->apply({
-		{ ChatSearchTab::ThisTopic, topicIcon },
-		{ ChatSearchTab::ThisPeer, peerIcon },
-		{ ChatSearchTab::ThisCommunity, communityIcon },
-		{ ChatSearchTab::Archive, archiveIcon },
-		{ ChatSearchTab::MyMessages, myIcon },
-		{ ChatSearchTab::PublicPosts, publicIcon },
-	}, _searchState.tab, peerTabType, fromImage, fromName);
+	auto tabs = std::vector<ChatSearchIn::PossibleTab>();
+	if (topicIcon) {
+		tabs.push_back({ ChatSearchTab::ThisTopic, topicIcon });
+	}
+	if (peerIcon) {
+		tabs.push_back({ ChatSearchTab::ThisPeer, peerIcon });
+	}
+	if (communityIcon) {
+		tabs.push_back({ ChatSearchTab::ThisCommunity, communityIcon });
+	}
+	if (archiveIcon) {
+		tabs.push_back({ ChatSearchTab::Archive, archiveIcon });
+	}
+	tabs.push_back({ ChatSearchTab::All, myIcon });
+	tabs.push_back({ ChatSearchTab::Messages, myIcon });
+	tabs.push_back({ ChatSearchTab::MediaFiles, publicIcon ? publicIcon : myIcon });
+	tabs.push_back({ ChatSearchTab::ChatsPeople, peerIcon ? peerIcon : myIcon });
+	tabs.push_back({ ChatSearchTab::Global, Ui::MakeIconThumbnail(st::menuIconChannel) });
+	_searchIn->apply(std::move(tabs), _searchState.tab, peerTabType, fromImage, fromName);
 }
 
 void InnerWidget::repaintSearchResult(int index) {

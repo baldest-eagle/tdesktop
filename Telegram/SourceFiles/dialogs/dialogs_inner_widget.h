@@ -479,6 +479,9 @@ private:
 	[[nodiscard]] int filteredIndex(int y) const;
 	[[nodiscard]] int filteredHeight(int till = -1) const;
 	[[nodiscard]] int peerSearchOffset() const;
+	[[nodiscard]] bool hasPeerSearchResults() const;
+	[[nodiscard]] bool hasFilterResults() const;
+	[[nodiscard]] bool hasSearchResults() const;
 	[[nodiscard]] int searchInChatOffset() const;
 	[[nodiscard]] int previewOffset() const;
 	[[nodiscard]] int searchedOffset() const;

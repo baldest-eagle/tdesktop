@@ -3789,12 +3789,54 @@ void Widget::updateCancelSearch() {
 }
 
 QString Widget::validateSearchQuery() {
-	const auto query = currentSearchQuery();
+	const auto rawQuery = currentSearchQuery();
 	if (!_subsectionTopBar
 		&& _suggestions
-		&& _suggestions->consumeSearchQuery(query)) {
+		&& _suggestions->consumeSearchQuery(rawQuery)) {
 		return QString();
-	} else if (_searchState.tab == ChatSearchTab::PublicPosts) {
+	}
+	auto fromToken = QString();
+	auto inToken = QString();
+	auto typeFilter = SearchTypeFilter::All;
+	auto dateAfter = QDate();
+	auto dateBefore = QDate();
+
+	const auto words = rawQuery.split(' ', Qt::SkipEmptyParts);
+	auto cleanedWords = QStringList();
+	for (const auto &word : words) {
+		if (word.startsWith(u"from:"_q, Qt::CaseInsensitive)) {
+			fromToken = word.mid(5);
+		} else if (word.startsWith(u"in:"_q, Qt::CaseInsensitive)) {
+			inToken = word.mid(3);
+		} else if (word.startsWith(u"type:"_q, Qt::CaseInsensitive)) {
+			const auto t = word.mid(5).toLower();
+			if (t == u"photo"_q || t == u"pic"_q || t == u"image"_q) {
+				typeFilter = SearchTypeFilter::Photo;
+			} else if (t == u"video"_q || t == u"vid"_q) {
+				typeFilter = SearchTypeFilter::Video;
+			} else if (t == u"doc"_q || t == u"file"_q || t == u"pdf"_q) {
+				typeFilter = SearchTypeFilter::Document;
+			} else if (t == u"audio"_q || t == u"voice"_q || t == u"music"_q) {
+				typeFilter = SearchTypeFilter::Audio;
+			} else if (t == u"link"_q || t == u"url"_q) {
+				typeFilter = SearchTypeFilter::Link;
+			}
+		} else if (word.startsWith(u"after:"_q, Qt::CaseInsensitive)) {
+			dateAfter = QDate::fromString(word.mid(6), Qt::ISODate);
+		} else if (word.startsWith(u"before:"_q, Qt::CaseInsensitive)) {
+			dateBefore = QDate::fromString(word.mid(7), Qt::ISODate);
+		} else {
+			cleanedWords.push_back(word);
+		}
+	}
+	_searchState.fromQuery = fromToken;
+	_searchState.inQuery = inToken;
+	_searchState.typeFilter = typeFilter;
+	_searchState.dateAfter = dateAfter;
+	_searchState.dateBefore = dateBefore;
+	const auto query = cleanedWords.join(' ');
+
+	if (_searchState.tab == ChatSearchTab::PublicPosts) {
 		if (_searchHashOrCashtag == HashOrCashtag::None) {
 			_searchHashOrCashtag = HashOrCashtag::Hashtag;
 		}

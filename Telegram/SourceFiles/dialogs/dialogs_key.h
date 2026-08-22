@@ -139,6 +139,15 @@ enum class ChatTypeFilter : uchar {
 	Channels,
 };
 
+enum class SearchTypeFilter : uchar {
+	All,
+	Photo,
+	Video,
+	Document,
+	Audio,
+	Link,
+};
+
 struct SearchState {
 	Key inChat;
 	PeerData *fromPeer = nullptr;
@@ -146,8 +155,13 @@ struct SearchState {
 	std::vector<Data::ReactionId> tags;
 	ChatSearchTab tab = {};
 	ChatTypeFilter filter = ChatTypeFilter::All;
+	SearchTypeFilter typeFilter = SearchTypeFilter::All;
 	bool fromArchive = true;
 	QString query;
+	QString fromQuery;
+	QString inQuery;
+	QDate dateAfter;
+	QDate dateBefore;
 
 	[[nodiscard]] bool empty() const;
 	[[nodiscard]] ChatSearchTab defaultTabForMe() const;

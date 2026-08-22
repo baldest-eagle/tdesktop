@@ -83,6 +83,16 @@ private:
 		return tr::lng_search_tab_archive(tr::now);
 	case ChatSearchTab::ThisCommunity:
 		return tr::lng_search_tab_this_community(tr::now);
+	case ChatSearchTab::All:
+		return u"All"_q;
+	case ChatSearchTab::Messages:
+		return u"Messages"_q;
+	case ChatSearchTab::MediaFiles:
+		return u"Media & Files"_q;
+	case ChatSearchTab::ChatsPeople:
+		return u"Chats & People"_q;
+	case ChatSearchTab::Global:
+		return u"Global"_q;
 	}
 	Unexpected("Tab in Dialogs::TabLabel.");
 }

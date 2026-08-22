@@ -109,7 +109,7 @@ ChatSearchTab SearchState::defaultTabForMe() const {
 bool SearchState::filterChatsList() const {
 	using Tab = ChatSearchTab;
 	return !inChat // ThisPeer can be in opened forum.
-		&& (tab == Tab::MyMessages || tab == Tab::ThisPeer);
+		&& (tab == Tab::MyMessages || tab == Tab::ThisPeer || tab == Tab::All || tab == Tab::ChatsPeople);
 }
 
 } // namespace Dialogs
