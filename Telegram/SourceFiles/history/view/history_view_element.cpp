@@ -779,9 +779,10 @@ void UnreadBar::paint(
 
 	int maxwidth = w;
 	if (mode == ElementChatMode::Wide) {
+		const auto wideBase = std::max(st::msgMaxWidth, std::min(int(w * 0.78), 920));
 		maxwidth = qMin(
 			maxwidth,
-			st::msgMaxWidth
+			wideBase
 				+ 2 * st::msgPhotoSkip
 				+ 2 * st::msgMargin.left());
 	}
@@ -1043,9 +1044,10 @@ void ServicePreMessage::init(
 int ServicePreMessage::resizeToWidth(int newWidth, ElementChatMode mode) {
 	width = newWidth;
 	if (mode == ElementChatMode::Wide) {
+		const auto wideBase = std::max(st::msgMaxWidth, std::min(int(newWidth * 0.78), 920));
 		accumulate_min(
 			width,
-			st::msgMaxWidth + 2 * st::msgPhotoSkip + 2 * st::msgMargin.left());
+			wideBase + 2 * st::msgPhotoSkip + 2 * st::msgMargin.left());
 	}
 
 	if (media) {

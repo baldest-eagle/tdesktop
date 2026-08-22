@@ -451,7 +451,8 @@ bool Service::consumeHorizontalScroll(
 QRect Service::countGeometry() const {
 	auto result = QRect(0, 0, width(), height());
 	if (delegate()->elementChatMode() == ElementChatMode::Wide) {
-		result.setWidth(qMin(result.width(), st::msgMaxWidth + 2 * st::msgPhotoSkip + 2 * st::msgMargin.left()));
+		const auto wideBase = std::max(st::msgMaxWidth, std::min(int(width() * 0.78), 920));
+		result.setWidth(qMin(result.width(), wideBase + 2 * st::msgPhotoSkip + 2 * st::msgMargin.left()));
 	}
 	auto margins = st::msgServiceMargin;
 	margins.setTop(marginTop());
@@ -490,7 +491,8 @@ QSize Service::performCountCurrentSize(int newWidth) {
 	const auto mediaDisplayed = media && media->isDisplayed();
 	auto contentWidth = newWidth;
 	if (delegate()->elementChatMode() == ElementChatMode::Wide) {
-		accumulate_min(contentWidth, st::msgMaxWidth + 2 * st::msgPhotoSkip + 2 * st::msgMargin.left());
+		const auto wideBase = std::max(st::msgMaxWidth, std::min(int(newWidth * 0.78), 920));
+		accumulate_min(contentWidth, wideBase + 2 * st::msgPhotoSkip + 2 * st::msgMargin.left());
 	}
 	contentWidth -= st::msgServiceMargin.left() + st::msgServiceMargin.left(); // two small margins
 	if (contentWidth < st::msgServicePadding.left() + st::msgServicePadding.right() + 1) {

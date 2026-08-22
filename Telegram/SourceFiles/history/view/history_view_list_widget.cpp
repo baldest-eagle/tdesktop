@@ -4562,7 +4562,8 @@ void ListWidget::mouseActionUpdate() {
 					auto dateLeft = st::msgServiceMargin.left();
 					auto maxwidth = view->width();
 					if (_isChatWide) {
-						maxwidth = qMin(maxwidth, int32(st::msgMaxWidth + 2 * st::msgPhotoSkip + 2 * st::msgMargin.left()));
+						const auto wideBase = std::max(st::msgMaxWidth, std::min(int(view->width() * 0.78), 920));
+						maxwidth = qMin(maxwidth, int32(wideBase + 2 * st::msgPhotoSkip + 2 * st::msgMargin.left()));
 					}
 					auto widthForDate = maxwidth - st::msgServiceMargin.left() - st::msgServiceMargin.left();
 

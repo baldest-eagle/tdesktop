@@ -6333,8 +6333,12 @@ QRect Message::countGeometry() const {
 			contentLeft += (availableWidth - contentWidth) / 2;
 		}
 	} else if (contentWidth < availableWidth && centeredView) {
+		const auto isWide = (delegate()->elementChatMode() == ElementChatMode::Wide) || (width() > st::adaptiveChatWideWidth);
+		const auto wideBase = isWide
+			? std::max(st::msgMaxWidth, std::min(int(width() * 0.78), 920))
+			: st::msgMaxWidth;
 		contentLeft += std::max(
-			((st::msgMaxWidth + 2 * st::msgPhotoSkip) - contentWidth) / 2,
+			((wideBase + 2 * st::msgPhotoSkip) - contentWidth) / 2,
 			0);
 	}
 
@@ -6435,10 +6439,14 @@ int Message::resizeContentGetHeight(int newWidth) {
 		}
 	}
 	accumulate_min(contentWidth, maxWidth());
+	const auto isWide = (delegate()->elementChatMode() == ElementChatMode::Wide) || (newWidth > st::adaptiveChatWideWidth);
+	const auto adaptiveWideMaxWidth = isWide
+		? std::max(st::msgMaxWidth, std::min(int(newWidth * 0.78), 920))
+		: st::msgMaxWidth;
 	_bubbleWidthLimit = (UnlimitedMessageWidth.value() && !mediaDisplayed)
 		? 0x3FFFFFF
 		: std::max({
-			st::msgMaxWidth,
+			adaptiveWideMaxWidth,
 			monospaceMaxWidth(),
 			mediaDisplayed ? media->bubbleWidthLimit() : 0,
 		});
