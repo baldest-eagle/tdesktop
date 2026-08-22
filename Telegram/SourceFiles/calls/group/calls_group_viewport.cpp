@@ -517,35 +517,34 @@ Viewport::Layout Viewport::countWide(int outerWidth, int outerHeight) const {
 	auto &sizes = result.list;
 	sizes.reserve(_tiles.size());
 
-	for (const auto &pinned : _pinnedEndpoints) {
-		for (const auto &tile : _tiles) {
-			if (tile->endpoint() == pinned) {
-				const auto video = tile.get();
-				const auto size = video->trackOrUserpicSize();
-				if (!size.isEmpty()) {
-					sizes.push_back(Geometry{ video, size });
+	if (!_pinnedEndpoints.empty()) {
+		for (const auto &pinned : _pinnedEndpoints) {
+			for (const auto &tile : _tiles) {
+				if (tile->endpoint() == pinned) {
+					const auto video = tile.get();
+					const auto size = video->trackOrUserpicSize();
+					if (!size.isEmpty()) {
+						sizes.push_back(Geometry{ video, size });
+					}
+					break;
 				}
-				break;
 			}
 		}
-	}
-
-	auto unpinnedTiles = std::vector<not_null<VideoTile*>>();
-	for (const auto &tile : _tiles) {
-		const auto isPinned = ranges::contains(_pinnedEndpoints, tile->endpoint());
-		if (!isPinned) {
+	} else {
+		auto unpinnedTiles = std::vector<not_null<VideoTile*>>();
+		for (const auto &tile : _tiles) {
 			const auto video = tile.get();
 			const auto size = video->trackOrUserpicSize();
 			if (!size.isEmpty()) {
 				unpinnedTiles.push_back(video);
 			}
 		}
-	}
-	std::sort(unpinnedTiles.begin(), unpinnedTiles.end(), [](not_null<VideoTile*> a, not_null<VideoTile*> b) {
-		return a->entryTime() < b->entryTime();
-	});
-	for (const auto video : unpinnedTiles) {
-		sizes.push_back(Geometry{ video.get(), video->trackOrUserpicSize() });
+		std::sort(unpinnedTiles.begin(), unpinnedTiles.end(), [](not_null<VideoTile*> a, not_null<VideoTile*> b) {
+			return a->entryTime() < b->entryTime();
+		});
+		for (const auto video : unpinnedTiles) {
+			sizes.push_back(Geometry{ video.get(), video->trackOrUserpicSize() });
+		}
 	}
 	if (sizes.empty()) {
 		return result;
@@ -682,8 +681,10 @@ void Viewport::showLarge(const VideoEndpoint &endpoint) {
 	if (_borrowed) {
 		return;
 	}
-	if (!_pinnedEndpoints.empty() && endpoint && !isPinned(endpoint)) {
-		return;
+	if (!_pinnedEndpoints.empty()) {
+		if (!endpoint || !isPinned(endpoint)) {
+			return;
+		}
 	}
 
 	// If a video gets switched off, GroupCall first unpins it,

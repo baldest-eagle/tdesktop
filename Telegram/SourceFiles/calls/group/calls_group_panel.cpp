@@ -1157,7 +1157,6 @@ void Panel::setupMembers() {
 		}
 	}, _callLifetime);
 
-	// Route new video tracks to secondary displays
 	_call->videoStreamActiveUpdates(
 	) | rpl::on_next([=](const VideoStateToggle &update) {
 		if (!update.value) {
@@ -1165,33 +1164,6 @@ void Panel::setupMembers() {
 				_displayCoordinator->removeVideoTrack(i, update.endpoint);
 				_routedEndpoints[i].erase(update.endpoint);
 			}
-		} else {
-			// Defer to allow the participant row to be created first
-			const auto endpoint = update.endpoint;
-			crl::on_main(widget(), [=] {
-				const auto &tracks = _call->activeVideoTracks();
-				const auto it = tracks.find(endpoint);
-				if (it != tracks.end()) {
-					for (int i = 0; i < _displayCoordinator->displayCount(); ++i) {
-						auto &routed = _routedEndpoints[i];
-						if (routed.find(endpoint) != routed.end()) continue;
-						const auto role = _displayCoordinator->role(i);
-						if (role == DisplayRole::GridViewport) {
-							const auto row = _members->lookupRow(GroupCall::TrackPeer(it->second));
-							if (row) {
-								_displayCoordinator->addVideoTrack(
-									i,
-									endpoint,
-									VideoTileTrack{ GroupCall::TrackPointer(it->second), row },
-									GroupCall::TrackSizeValue(it->second),
-									rpl::single(false),
-									endpoint.peer == _call->joinAs());
-								routed.insert(endpoint);
-							}
-						}
-					}
-				}
-			});
 		}
 	}, _callLifetime);
 
@@ -1555,8 +1527,6 @@ void Panel::routeVideoToDisplays() {
 		return;
 	}
 
-	// Route active video tracks to secondary displays
-	// Defer to allow participant rows to be populated first
 	crl::on_main(widget(), [=] {
 		const auto &tracks = _call->activeVideoTracks();
 		for (const auto &[endpoint, track] : tracks) {
@@ -1565,21 +1535,15 @@ void Panel::routeVideoToDisplays() {
 				continue;
 			}
 			for (int i = 0; i < _displayCoordinator->displayCount(); ++i) {
-				// Skip if already routed to this display
-				auto &routed = _routedEndpoints[i];
-				if (routed.find(endpoint) != routed.end()) {
-					continue;
-				}
-				const auto role = _displayCoordinator->role(i);
-				if (role == DisplayRole::GridViewport) {
+				if (_displayCoordinator->isPinnedOnScreen(i, endpoint)) {
 					_displayCoordinator->addVideoTrack(
 						i,
 						endpoint,
 						VideoTileTrack{ GroupCall::TrackPointer(track), row },
 						GroupCall::TrackSizeValue(track),
-						rpl::single(false),
+						rpl::single(true),
 						endpoint.peer == _call->joinAs());
-					routed.insert(endpoint);
+					_routedEndpoints[i].insert(endpoint);
 				}
 			}
 		}
@@ -1596,18 +1560,15 @@ void Panel::retryRoutingForPeer(not_null<PeerData*> peer) {
 		const auto row = _members->lookupRow(GroupCall::TrackPeer(track));
 		if (!row) continue;
 		for (int i = 0; i < _displayCoordinator->displayCount(); ++i) {
-			auto &routed = _routedEndpoints[i];
-			if (routed.find(endpoint) != routed.end()) continue;
-			const auto role = _displayCoordinator->role(i);
-			if (role == DisplayRole::GridViewport) {
+			if (_displayCoordinator->isPinnedOnScreen(i, endpoint)) {
 				_displayCoordinator->addVideoTrack(
 					i,
 					endpoint,
 					VideoTileTrack{ GroupCall::TrackPointer(track), row },
 					GroupCall::TrackSizeValue(track),
-					rpl::single(false),
+					rpl::single(true),
 					endpoint.peer == _call->joinAs());
-				routed.insert(endpoint);
+				_routedEndpoints[i].insert(endpoint);
 			}
 		}
 	}
