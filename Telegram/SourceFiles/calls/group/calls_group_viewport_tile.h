@@ -34,7 +34,7 @@ public:
 	[[nodiscard]] not_null<Webrtc::VideoTrack*> track() const {
 		return _track.track;
 	}
-	[[nodiscard]] not_null<MembersRow*> row() const {
+	[[nodiscard]] MembersRow *row() const {
 		return _track.row;
 	}
 	[[nodiscard]] not_null<PeerData*> peer() const {

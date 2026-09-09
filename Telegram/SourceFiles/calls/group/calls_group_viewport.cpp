@@ -218,7 +218,9 @@ void Viewport::handleMouseRelease(QPoint position, Qt::MouseButton button) {
 			if (videoStream()) {
 				return;
 			} else if (button == Qt::RightButton) {
-				tile->row()->showContextMenu();
+				if (const auto row = tile->row()) {
+					row->showContextMenu();
+				}
 			} else if (pressed.element == Selection::Element::PinButton
 				|| pressed.element == Selection::Element::BackButton) {
 				_pinToggles.fire({ tile->endpoint(), true });

@@ -93,6 +93,8 @@ public:
 	[[nodiscard]] rpl::producer<int> displayCountChanged() const;
 	[[nodiscard]] rpl::producer<VideoEndpoint> qualityRequests() const;
 
+	bool hasTrack(int displayIndex, const VideoEndpoint &endpoint) const;
+
 private:
 	void createDisplayWindow(int displayIndex, QScreen *screen);
 	void destroyDisplayWindow(int displayIndex);

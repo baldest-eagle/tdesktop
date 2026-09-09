@@ -7,6 +7,7 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 */
 #pragma once
 
+#include "calls/group/calls_group_call.h"
 #include "ui/effects/animations.h"
 #include "ui/rp_widget.h"
 
@@ -51,6 +52,7 @@ enum class VideoQuality;
 struct VideoTileTrack {
 	Webrtc::VideoTrack *track = nullptr;
 	MembersRow *row = nullptr;
+	not_null<PeerData*> peer;
 	rpl::variable<QSize> trackSize;
 
 	[[nodiscard]] explicit operator bool() const {
@@ -61,7 +63,7 @@ struct VideoTileTrack {
 [[nodiscard]] inline bool operator==(
 		VideoTileTrack a,
 		VideoTileTrack b) noexcept {
-	return (a.track == b.track) && (a.row == b.row);
+	return (a.track == b.track) && (a.peer == b.peer);
 }
 
 [[nodiscard]] inline bool operator!=(

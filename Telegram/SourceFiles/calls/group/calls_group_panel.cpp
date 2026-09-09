@@ -1162,7 +1162,6 @@ void Panel::setupMembers() {
 		if (!update.value) {
 			for (int i = 0; i < _displayCoordinator->displayCount(); ++i) {
 				_displayCoordinator->removeVideoTrack(i, update.endpoint);
-				_routedEndpoints[i].erase(update.endpoint);
 			}
 		}
 	}, _callLifetime);
@@ -1372,7 +1371,10 @@ void Panel::setupVideo(not_null<Viewport*> viewport) {
 		const auto self = (endpoint.peer == _call->joinAs());
 		viewport->add(
 			endpoint,
-			VideoTileTrack{ GroupCall::TrackPointer(track), row },
+			VideoTileTrack{
+				GroupCall::TrackPointer(track),
+				row,
+				not_null<PeerData*>(endpoint.peer) },
 			GroupCall::TrackSizeValue(track),
 			std::move(pinned),
 			self);
@@ -1433,7 +1435,10 @@ void Panel::pinToScreen(int screenIndex, const VideoEndpoint &endpoint) {
 	_displayCoordinator->pinToScreen(
 		screenIndex,
 		endpoint,
-		VideoTileTrack{ GroupCall::TrackPointer(it->second), row },
+		VideoTileTrack{
+			GroupCall::TrackPointer(it->second),
+			row,
+			not_null<PeerData*>(endpoint.peer) },
 		GroupCall::TrackSizeValue(it->second),
 		endpoint.peer == _call->joinAs());
 }
@@ -1508,11 +1513,13 @@ void Panel::routeVideoToDisplays() {
 					_displayCoordinator->addVideoTrack(
 						i,
 						endpoint,
-						VideoTileTrack{ GroupCall::TrackPointer(track), row },
+						VideoTileTrack{
+							GroupCall::TrackPointer(track),
+							row,
+							not_null<PeerData*>(endpoint.peer) },
 						GroupCall::TrackSizeValue(track),
 						rpl::single(true),
 						endpoint.peer == _call->joinAs());
-					_routedEndpoints[i].insert(endpoint);
 				}
 			}
 		}
@@ -1533,11 +1540,13 @@ void Panel::retryRoutingForPeer(not_null<PeerData*> peer) {
 				_displayCoordinator->addVideoTrack(
 					i,
 					endpoint,
-					VideoTileTrack{ GroupCall::TrackPointer(track), row },
+					VideoTileTrack{
+						GroupCall::TrackPointer(track),
+						row,
+						not_null<PeerData*>(endpoint.peer) },
 					GroupCall::TrackSizeValue(track),
 					rpl::single(true),
 					endpoint.peer == _call->joinAs());
-				_routedEndpoints[i].insert(endpoint);
 			}
 		}
 	}

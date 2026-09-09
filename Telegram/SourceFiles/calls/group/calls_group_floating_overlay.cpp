@@ -17,7 +17,10 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "history/history.h"
 #include "history/history_item.h"
 #include "history/view/history_view_element.h"
-#include "ui/show.h"
+#include "chat_helpers/compose/compose_show.h"
+#include "window/window_session_controller.h"
+#include "main/main_session.h"
+#include "ui/layers/show.h"
 #include "ui/widgets/buttons.h"
 #include "ui/widgets/labels.h"
 
@@ -96,6 +99,9 @@ void FloatingOverlay::removeChat(PeerData *peer) {
 	});
 	if (i != _tabs.end()) {
 		_tabs.erase(i);
+		if (_tabs.empty()) {
+			_tabs.push_back({ nullptr, u"Call Chat"_q });
+		}
 		if (_activeTabIndex >= _tabs.size()) {
 			_activeTabIndex = _tabs.size() - 1;
 		}
@@ -121,7 +127,7 @@ void FloatingOverlay::updateTabRects() {
 	const int y = 5;
 	const int h = 26;
 
-	QFont font = st::callButtonLabel.font;
+	QFont font = st::callButtonLabel.style.font;
 	QFontMetrics fm(font);
 
 	for (int i = 0; i < _tabs.size(); ++i) {
@@ -201,7 +207,7 @@ void FloatingOverlay::keyPressEvent(QKeyEvent *event) {
 				update();
 			}
 			return;
-		} else if (!event->text().isEmpty() && event->text().at(0).isPrintable()) {
+		} else if (!event->text().isEmpty() && event->text().at(0).isPrint()) {
 			_searchQuery.append(event->text());
 			updateSearchResults();
 			update();
@@ -213,11 +219,14 @@ void FloatingOverlay::keyPressEvent(QKeyEvent *event) {
 
 void FloatingOverlay::mousePressEvent(QMouseEvent *event) {
 	if (event->button() == Qt::LeftButton && !_passthrough) {
-		const auto pos = event->position().toPoint();
+		const auto pos = event->pos();
 		if (_searchOpen) {
 			for (const auto &res : _searchResults) {
 				if (res.openChatRect.contains(pos)) {
-					_panel->uiShow()->showPeerHistory(res.peer->id);
+					const auto resolved = _panel->uiShow()->resolveWindow();
+					if (resolved) {
+						resolved->showPeerHistory(res.peer);
+					}
 					toggleSearch();
 					event->accept();
 					return;
@@ -261,7 +270,7 @@ void FloatingOverlay::mousePressEvent(QMouseEvent *event) {
 		}
 
 		_dragging = true;
-		_dragStart = event->globalPosition().toPoint();
+		_dragStart = event->globalPos();
 		_startGeometry = geometry();
 	}
 	QWidget::mousePressEvent(event);
@@ -269,7 +278,7 @@ void FloatingOverlay::mousePressEvent(QMouseEvent *event) {
 
 void FloatingOverlay::mouseMoveEvent(QMouseEvent *event) {
 	if (_dragging) {
-		const auto delta = event->globalPosition().toPoint() - _dragStart;
+		const auto delta = event->globalPos() - _dragStart;
 		setGeometry(_startGeometry.translated(delta));
 	}
 	QWidget::mouseMoveEvent(event);
@@ -307,7 +316,7 @@ void FloatingOverlay::paintEvent(QPaintEvent *event) {
 
 	if (_tabs.size() > 1 && !_searchOpen) {
 		updateTabRects();
-		QFont font = st::callButtonLabel.font;
+		QFont font = st::callButtonLabel.style.font;
 		p.setFont(font);
 		for (int i = 0; i < _tabs.size(); ++i) {
 			const auto &tab = _tabs[i];
@@ -349,7 +358,7 @@ void FloatingOverlay::paintEvent(QPaintEvent *event) {
 	if (_searchOpen) {
 		p.fillRect(QRect(0, 0, width(), height()), QColor(20, 20, 20, 245));
 
-		p.setFont(st::callButtonLabel.font);
+		p.setFont(st::callButtonLabel.style.font);
 		p.setPen(QColor(255, 255, 255));
 		const auto prompt = u"Search Callers: "_q + _searchQuery + u"|"_q;
 		p.drawText(QRect(10, 10, width() - 50, 26), Qt::AlignVCenter | Qt::AlignLeft, prompt);
@@ -382,7 +391,7 @@ void FloatingOverlay::paintEvent(QPaintEvent *event) {
 void FloatingOverlay::resizeEvent(QResizeEvent *event) {
 	QWidget::resizeEvent(event);
 	if (_messagesUi) {
-		_messagesUi->move(4, height() - 4, width() - 8, height() - 40);
+		_messagesUi->move(4, 35, width() - 8, height() - 44);
 	}
 	if (_closeBtn) {
 		_closeBtn->move(width() - 30, 5);
@@ -447,13 +456,17 @@ void FloatingOverlay::setupChatContent() {
 				for (const auto &item : block->messages) {
 					const auto data = item->data();
 					if (!data) continue;
-					Message msg;
-					msg.id = data->id;
-					msg.date = data->date();
-					msg.peer = data->from() ? data->from() : data->history()->peer;
-					msg.text = data->originalText();
-					msg.mine = data->out();
-					result.push_back(msg);
+					result.push_back({
+						data->id,
+						data->date(),
+						0,  // pinFinishDate
+						data->from() ? data->from() : data->history()->peer,
+						data->originalText(),
+						0,  // stars
+						false,  // failed
+						false,  // admin
+						data->out()
+					});
 				}
 			}
 			if (result.size() > 50) {
@@ -465,9 +478,9 @@ void FloatingOverlay::setupChatContent() {
 		auto messagesVar = std::make_shared<rpl::variable<std::vector<Message>>>(getMessages());
 
 		peer->session().data().newItemAdded(
-		) | rpl::start_with_next([=](not_null<HistoryItem*> item) {
+		) | rpl::on_next([=](not_null<HistoryItem*> item) {
 			if (item->history()->peer == peer) {
-				messagesVar->set(getMessages());
+				messagesVar->reset(getMessages());
 			}
 		}, _tabLifetime);
 
@@ -484,7 +497,7 @@ void FloatingOverlay::setupChatContent() {
 	}
 
 	if (_messagesUi) {
-		_messagesUi->move(4, height() - 4, width() - 8, height() - 40);
+		_messagesUi->move(4, 35, width() - 8, height() - 44);
 	}
 }
 

@@ -12,6 +12,9 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include <QtWidgets/QWidget>
 #include <QtWidgets/QShortcut>
 
+#include "ui/widgets/buttons.h"
+#include "ui/widgets/labels.h"
+
 class PeerData;
 
 namespace Calls::Group {

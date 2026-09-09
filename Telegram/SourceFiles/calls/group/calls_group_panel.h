@@ -112,6 +112,7 @@ public:
 	}
 
 	void promptPinTargetScreen(const VideoEndpoint &endpoint);
+
 	void pinToScreen(int screenIndex, const VideoEndpoint &endpoint);
 	void unpinFromScreen(int screenIndex, const VideoEndpoint &endpoint);
 
@@ -193,8 +194,6 @@ private:
 		rpl::producer<bool> active);
 
 	void endCall();
-
-	void promptPinTargetScreen(const VideoEndpoint &endpoint);
 
 	void showMainMenu();
 	void chooseJoinAs();
@@ -290,8 +289,6 @@ private:
 	std::unique_ptr<MessageField> _messageField;
 	std::unique_ptr<MessagesUi> _messages;
 
-	// Track which endpoints have been routed to which displays to avoid duplicates
-	std::map<int, std::set<VideoEndpoint>> _routedEndpoints;
 	std::unique_ptr<DisplayCoordinator> _displayCoordinator;
 	std::unique_ptr<FloatingOverlay> _floatingOverlay;
 

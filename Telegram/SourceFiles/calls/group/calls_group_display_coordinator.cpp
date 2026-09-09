@@ -12,6 +12,7 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 
 #include <QtGui/QGuiApplication>
 #include <QtGui/QScreen>
+#include <QtWidgets/QShortcut>
 #include <QtWidgets/QWidget>
 
 #include "styles/style_calls.h"
@@ -69,7 +70,8 @@ void DisplayCoordinator::updateScreens() {
 			continue;
 		}
 		currentIndices.insert(i);
-		if (_displays.find(i) == _displays.end()) {
+		if (_displays.find(i) == _displays.end()
+			&& _routedEndpoints.find(i) != _routedEndpoints.end()) {
 			createDisplayWindow(i, screens[i]);
 		}
 	}
@@ -100,7 +102,7 @@ void DisplayCoordinator::createDisplayWindow(int displayIndex, QScreen *screen) 
 
 	display.widget = base::make_unique_q<QWidget>(
 		nullptr,
-		Qt::Window | Qt::FramelessWindowHint);
+		Qt::Tool | Qt::FramelessWindowHint);
 	if (!display.widget) {
 		_displays.erase(displayIndex);
 		return;
@@ -124,6 +126,14 @@ void DisplayCoordinator::createDisplayWindow(int displayIndex, QScreen *screen) 
 	display.viewport->widget()->show();
 	display.widget->show();
 	display.widget->raise();
+
+	const auto escapeShortcut = new QShortcut(
+		QKeySequence(Qt::Key_Escape),
+		display.widget.get());
+	escapeShortcut->setContext(Qt::WidgetShortcut);
+	QObject::connect(escapeShortcut, &QShortcut::activated, [this, displayIndex] {
+		destroyDisplayWindow(displayIndex);
+	});
 
 	display.viewport->qualityRequests(
 	) | rpl::on_next([=](const VideoQualityRequest &request) {
@@ -253,7 +263,7 @@ void DisplayCoordinator::unpinFromScreen(int screenIndex, const VideoEndpoint &e
 	it->second.viewport->togglePin(endpoint, false);
 	it->second.viewport->remove(endpoint);
 	if (_routedEndpoints[screenIndex].empty()) {
-		hideDisplay(screenIndex);
+		destroyDisplayWindow(screenIndex);
 	}
 }
 
@@ -297,6 +307,9 @@ void DisplayCoordinator::removeVideoTrack(int displayIndex, const VideoEndpoint 
 		return;
 	}
 	it->second.viewport->remove(endpoint);
+	if (_routedEndpoints[displayIndex].empty()) {
+		destroyDisplayWindow(displayIndex);
+	}
 }
 
 void DisplayCoordinator::showLarge(int displayIndex, const VideoEndpoint &endpoint) {

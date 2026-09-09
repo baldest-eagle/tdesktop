@@ -951,11 +951,12 @@ void ShowCallsMenu(
 	const auto groupCallsContent = base::make_unique_q<PeerListContent>(
 		state->dummy.get(),
 		&state->groupCallsController);
-	state->groupCallsDelegate.setContent(groupCallsContent);
+	state->groupCallsDelegate.setContent(groupCallsContent.get());
 	state->groupCallsController.setDelegate(&state->groupCallsDelegate);
 
 	menu->addAction(
 		tr::lng_call_box_groupcalls_subtitle(tr::now),
+		std::function<void()>{},
 		nullptr,
 		&st::menuIconGroups);
 

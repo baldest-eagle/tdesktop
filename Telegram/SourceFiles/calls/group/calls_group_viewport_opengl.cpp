@@ -444,9 +444,10 @@ void Viewport::RendererGL::validateUserpicFrame(
 		return;
 	}
 	const auto size = tile->trackOrUserpicSize();
+	auto view = tile->peer()->createUserpicView();
 	tileData.userpicFrame = PeerData::GenerateUserpicImage(
 		tile->peer(),
-		tile->row()->ensureUserpicView(),
+		view,
 		size.width(),
 		0);
 }
@@ -603,7 +604,7 @@ void Viewport::RendererGL::paintTile(
 		+ nameShift);
 	const auto mute = _buttons.texturedRect(
 		QRect(iconLeft, iconTop, icon.width(), icon.height()),
-		(row->state() == MembersRow::State::Active
+		(row && row->state() == MembersRow::State::Active
 			? _muteOff
 			: _muteOn),
 		geometry);
@@ -1210,10 +1211,16 @@ void Viewport::RendererGL::validateDatas() {
 		if (hasWidth < 1) {
 			return 0;
 		}
+		if (!row) {
+			const auto peer = tiles[i]->peer();
+			return std::clamp(peer->name().size(), 1, hasWidth) * factor;
+		}
 		return std::clamp(row->name().maxWidth(), 1, hasWidth) * factor;
 	};
 	for (auto i = 0; i != count; ++i) {
-		tiles[i]->row()->lazyInitialize(st::groupCallMembersListItem);
+		if (const auto row = tiles[i]->row()) {
+			row->lazyInitialize(st::groupCallMembersListItem);
+		}
 		const auto width = nameWidth(i);
 		if (width > available) {
 			available = width;
@@ -1339,12 +1346,24 @@ void Viewport::RendererGL::validateDatas() {
 					Qt::transparent);
 				p.setCompositionMode(QPainter::CompositionMode_SourceOver);
 			}
-			row->name().drawLeftElided(
-				p,
-				0,
-				data.nameRect.y() / factor,
-				data.nameRect.width() / factor,
-				paintToImage.width() / factor);
+			if (row) {
+				row->name().drawLeftElided(
+					p,
+					0,
+					data.nameRect.y() / factor,
+					data.nameRect.width() / factor,
+					paintToImage.width() / factor);
+			} else {
+				const auto peer = tiles[i]->peer();
+				p.setPen(st::groupCallVideoTextFg);
+				p.drawText(
+					QRect(0,
+						data.nameRect.y() / factor,
+						data.nameRect.width() / factor,
+						nameHeight / factor),
+					peer->name(),
+					QTextOption(Qt::AlignLeft | Qt::AlignVCenter));
+			}
 		}
 	}
 	_names.setImage(std::move(paintToImage));
@@ -1435,7 +1454,7 @@ void Viewport::RendererGL::validateNoiseTexture(
 void Viewport::RendererGL::validateOutlineAnimation(
 		not_null<VideoTile*> tile,
 		TileData &data) {
-	const auto peer = tile->row()->peer();
+	const auto peer = tile->peer();
 	const auto history = peer->owner().historyLoaded(peer);
 	const auto outline = history && (history->unreadCount() > 0 || history->unreadMark());
 	if (data.outline == outline) {

@@ -82,10 +82,11 @@ void Viewport::RendererSW::validateUserpicFrame(
 		return;
 	}
 	const auto size = tile->trackOrUserpicSize();
+	auto view = tile->peer()->createUserpicView();
 	data.userpicFrame = Images::BlurLargeImage(
 		PeerData::GenerateUserpicImage(
 			tile->peer(),
-			tile->row()->ensureUserpicView(),
+			view,
 			size.width(),
 			0),
 		kBlurRadius);
@@ -188,7 +189,7 @@ void Viewport::RendererSW::paintTileOutline(
 		int width,
 		int height,
 		not_null<VideoTile*> tile) {
-	const auto peer = tile->row()->peer();
+	const auto peer = tile->peer();
 	const auto history = peer->owner().historyLoaded(peer);
 	const auto hasUnread = history && (history->unreadCount() > 0 || history->unreadMark());
 	if (!hasUnread) {
@@ -321,7 +322,9 @@ void Viewport::RendererSW::paintTileControls(
 				shadowFill.height() * factor));
 	}
 	const auto row = tile->row();
-	row->lazyInitialize(st::groupCallMembersListItem);
+	if (row) {
+		row->lazyInitialize(st::groupCallMembersListItem);
+	}
 
 	// Mute.
 	const auto &icon = st::groupCallVideoCrossLine.icon;
@@ -330,10 +333,12 @@ void Viewport::RendererSW::paintTileControls(
 		- st.iconPosition.y()
 		- icon.height()
 		+ shift);
-	row->paintMuteIcon(
-		p,
-		{ iconLeft, iconTop, icon.width(), icon.height() },
-		MembersRowStyle::Video);
+	if (row) {
+		row->paintMuteIcon(
+			p,
+			{ iconLeft, iconTop, icon.width(), icon.height() },
+			MembersRowStyle::Video);
+	}
 
 	// Name.
 	p.setPen(st::groupCallVideoTextFg);
@@ -341,12 +346,19 @@ void Viewport::RendererSW::paintTileControls(
 		- st.iconPosition.x() - icon.width()
 		- st.namePosition.x();
 	const auto nameLeft = x + st.namePosition.x();
-	row->name().drawLeftElided(
-		p,
-		nameLeft,
-		nameTop + shift,
-		hasWidth,
-		width);
+	if (row) {
+		row->name().drawLeftElided(
+			p,
+			nameLeft,
+			nameTop + shift,
+			hasWidth,
+			width);
+	} else {
+		p.drawText(
+			QRect(nameLeft, nameTop + shift, hasWidth, height),
+			tile->peer()->name(),
+			QTextOption(Qt::AlignLeft | Qt::AlignVCenter));
+	}
 }
 
 } // namespace Calls::Group

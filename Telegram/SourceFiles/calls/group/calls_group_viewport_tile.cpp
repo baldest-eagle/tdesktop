@@ -34,7 +34,7 @@ Viewport::VideoTile::VideoTile(
 : _endpoint(endpoint)
 , _update(std::move(update))
 , _track(std::move(track))
-, _peer(_track.row->peer())
+, _peer(_track.peer)
 , _trackSize(std::move(trackSize))
 , _rtmp(endpoint.rtmp())
 , _self(self)
