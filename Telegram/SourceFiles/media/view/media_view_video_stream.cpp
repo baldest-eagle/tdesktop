@@ -327,6 +327,7 @@ void VideoStream::setupVideo() {
 			Calls::Group::VideoTileTrack{
 				Calls::GroupCall::TrackPointer(track),
 				row,
+				not_null<PeerData*>(endpoint.peer),
 			},
 			Calls::GroupCall::TrackSizeValue(track),
 			std::move(pinned),
