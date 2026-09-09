@@ -4066,7 +4066,12 @@ bool Widget::applySearchState(SearchState state) {
 	if (!state.inChat && !forum && !_openedForum) {
 		state.fromPeer = nullptr;
 	}
-	if (state.tab == ChatSearchTab::PublicPosts
+	if ((state.tab == ChatSearchTab::PublicPosts
+		|| state.tab == ChatSearchTab::All
+		|| state.tab == ChatSearchTab::Messages
+		|| state.tab == ChatSearchTab::MediaFiles
+		|| state.tab == ChatSearchTab::ChatsPeople
+		|| state.tab == ChatSearchTab::Global)
 		&& IsHashOrCashtagSearchQuery(state.query) == HashOrCashtag::None) {
 		state.tab = (_openedForum && !state.inChat)
 			? ChatSearchTab::ThisPeer
@@ -4074,7 +4079,9 @@ bool Widget::applySearchState(SearchState state) {
 			? ChatSearchTab::Archive
 			: (state.community || _openedCommunity)
 			? ChatSearchTab::ThisCommunity
-			: ChatSearchTab::MyMessages;
+			: (state.tab == ChatSearchTab::PublicPosts)
+			? ChatSearchTab::MyMessages
+			: state.tab;
 	} else if (!state.inChat
 		&& _searchHashOrCashtag == HashOrCashtag::None) {
 		const auto archive = _openedFolder

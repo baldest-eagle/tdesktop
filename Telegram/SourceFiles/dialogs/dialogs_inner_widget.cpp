@@ -768,7 +768,8 @@ bool InnerWidget::hasPeerSearchResults() const {
 		return false;
 	}
 	return (_searchState.tab == ChatSearchTab::Global)
-		|| (_searchState.tab == ChatSearchTab::All && !_searchState.inChat);
+		|| (_searchState.tab == ChatSearchTab::All && !_searchState.inChat)
+		|| (_searchState.tab == ChatSearchTab::ChatsPeople);
 }
 
 bool InnerWidget::hasFilterResults() const {
@@ -5197,6 +5198,7 @@ void InnerWidget::updateSearchIn() {
 		: nullptr;
 	const auto fromName = _searchFromShown
 		? _searchFromShown->shortName()
+		: QString();
 	auto tabs = std::vector<ChatSearchIn::PossibleTab>();
 	if (topicIcon) {
 		tabs.push_back({ ChatSearchTab::ThisTopic, topicIcon });
