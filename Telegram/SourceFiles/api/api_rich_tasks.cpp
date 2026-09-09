@@ -70,9 +70,18 @@ void RichTasks::sendAccumulated() {
 		}
 		const auto wait = entry.scheduled + kSendDelay - now;
 		if (wait <= 0) {
-			send(itemId, entry);
+			if (send(itemId, entry)) {
+				continue;
+			}
 		} else if (!nearest || nearest > wait) {
 			nearest = wait;
+		}
+	}
+	for (auto it = _entries.begin(); it != _entries.end(); ) {
+		if (!it->second.dirty && it->second.requestId == 0) {
+			it = _entries.erase(it);
+		} else {
+			++it;
 		}
 	}
 	if (nearest > 0) {
@@ -80,10 +89,11 @@ void RichTasks::sendAccumulated() {
 	}
 }
 
-void RichTasks::send(FullMsgId itemId, Accumulated &entry) {
+bool RichTasks::send(FullMsgId itemId, Accumulated &entry) {
 	const auto item = _session->data().message(itemId);
 	if (!item) {
-		return;
+		entry.dirty = false;
+		return true;
 	}
 	entry.dirty = false;
 	const auto session = _session;
@@ -106,6 +116,7 @@ void RichTasks::send(FullMsgId itemId, Accumulated &entry) {
 	}, [=](const QString &error, mtpRequestId) {
 		finishRequest(itemId, true);
 	});
+	return false;
 }
 
 void RichTasks::finishRequest(FullMsgId itemId, bool failed) {
@@ -130,5 +141,4 @@ void RichTasks::finishRequest(FullMsgId itemId, bool failed) {
 	i->second.scheduled = crl::now();
 	sendAccumulated();
 }
-
 } // namespace Api

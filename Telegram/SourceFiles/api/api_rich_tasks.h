@@ -45,7 +45,7 @@ private:
 	};
 
 	void sendAccumulated();
-	void send(FullMsgId itemId, Accumulated &entry);
+	bool send(FullMsgId itemId, Accumulated &entry);
 	void finishRequest(FullMsgId itemId, bool failed);
 
 	const not_null<Main::Session*> _session;
