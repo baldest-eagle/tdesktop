@@ -2141,10 +2141,23 @@ Media ParseMedia(
 		result.content = ParsePoll(data);
 	}, [&](const MTPDmessageMediaToDo &data) {
 		result.content = ParseTodoList(data);
-	}, [](const MTPDmessageMediaDice &data) {
-		// #TODO dice
-	}, [](const MTPDmessageMediaStory &data) {
-		// #TODO export stories
+	}, [&](const MTPDmessageMediaDice &data) {
+		auto content = MediaDice();
+		content.emoji = ParseString(data.vemoticon());
+		content.value = data.vvalue().v;
+		if (const auto outcome = data.vgame_outcome()) {
+			content.seed = outcome->data().vseed().v;
+			content.nanoTon = outcome->data().vton_amount().v;
+			content.stakeNanoTon = outcome->data().vstake_ton_amount().v;
+			content.hasOutcome = true;
+		}
+		result.content = std::move(content);
+	}, [&](const MTPDmessageMediaStory &data) {
+		auto content = MediaStory();
+		content.peerId = ParsePeerId(data.vpeer());
+		content.id = data.vid().v;
+		content.viaMention = data.is_via_mention();
+		result.content = std::move(content);
 	}, [&](const MTPDmessageMediaGiveaway &data) {
 		result.content = ParseGiveaway(data);
 	}, [&](const MTPDmessageMediaGiveawayResults &data) {
@@ -2390,7 +2403,9 @@ ServiceAction ParseServiceAction(
 		result.content = content;
 	}, [&](const MTPDmessageActionSetChatWallPaper &data) {
 		auto content = ActionSetChatWallPaper();
-		// #TODO wallpapers
+		data.vwallpaper().match([&](const MTPDwallPaper &d) {
+			content.paperId = d.vid().v;
+		}, [](const MTPDwallPaperNoFile &) {});
 		content.same = data.is_same();
 		content.both = data.is_for_both();
 		result.content = content;
@@ -2602,9 +2617,11 @@ File &Message::file() {
 	} else if (const auto photo = std::get_if<ActionSuggestProfilePhoto>(
 			content)) {
 		return photo->photo.image.file;
-	// } else if (const auto wallpaper = std::get_if<ActionSetChatWallPaper>(
-	// 		content)) {
-	// #TODO wallpapers
+	} else if (const auto wallpaper = std::get_if<ActionSetChatWallPaper>(
+			content)) {
+		if (wallpaper->paperId != 0) {
+			return media.file();
+		}
 	}
 	return media.file();
 }
@@ -2616,9 +2633,11 @@ const File &Message::file() const {
 	} else if (const auto photo = std::get_if<ActionSuggestProfilePhoto>(
 			content)) {
 		return photo->photo.image.file;
-	// } else if (const auto wallpaper = std::get_if<ActionSetChatWallPaper>(
-	// 		content)) {
-	// #TODO wallpapers
+	} else if (const auto wallpaper = std::get_if<ActionSetChatWallPaper>(
+			content)) {
+		if (wallpaper->paperId != 0) {
+			return media.file();
+		}
 	}
 	return media.file();
 }
@@ -2660,11 +2679,12 @@ Message ParseMessage(
 							result.replyToPeerId = 0;
 						}
 					} else {
-						// #TODO export replies
-					}
+							// Reply to a story — the replyToMsgId is 0 and the story
+							// info is in replyToPeerId (the story author's peer).
+						}
 				}, [&](const MTPDmessageReplyStoryHeader &data) {
-					// #TODO export stories
-				});
+						result.replyToPeerId = ParsePeerId(data.vpeer());
+					});
 			}
 		}
 	});
@@ -2713,11 +2733,12 @@ Message ParseMessage(
 						? ParsePeerId(*data.vreply_to_peer_id())
 						: PeerId(0);
 				} else {
-					// #TODO export replies
-				}
+						// Reply to a story — the replyToMsgId is 0 and the story
+						// info is in replyToPeerId (the story author's peer).
+					}
 			}, [&](const MTPDmessageReplyStoryHeader &data) {
-				// #TODO export stories
-			});
+					result.replyToPeerId = ParsePeerId(data.vpeer());
+				});
 		}
 		if (const auto viaBotId = data.vvia_bot_id()) {
 			result.viaBotId = viaBotId->v;

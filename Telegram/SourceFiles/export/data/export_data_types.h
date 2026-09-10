@@ -671,6 +671,21 @@ SessionsList ParseWebSessionsList(const MTPaccount_WebAuthorizations &data);
 struct UnsupportedMedia {
 };
 
+struct MediaDice {
+	Utf8String emoji;
+	int32 value = 0;
+	QByteArray seed;
+	int64 nanoTon = 0;
+	int64 stakeNanoTon = 0;
+	bool hasOutcome = false;
+};
+
+struct MediaStory {
+	PeerId peerId = 0;
+	int32 id = 0;
+	bool viaMention = false;
+};
+
 struct Media {
 	std::variant<
 		v::null_t,
@@ -686,6 +701,8 @@ struct Media {
 		GiveawayStart,
 		GiveawayResults,
 		PaidMedia,
+		MediaDice,
+		MediaStory,
 		UnsupportedMedia> content;
 	TimeId ttl = 0;
 
@@ -893,9 +910,9 @@ struct ActionSuggestProfilePhoto {
 };
 
 struct ActionSetChatWallPaper {
+	uint64 paperId = 0;
 	bool same = false;
 	bool both = false;
-	// #TODO wallpapers
 };
 
 struct ActionGiftCode {

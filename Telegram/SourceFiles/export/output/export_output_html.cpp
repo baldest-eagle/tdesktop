@@ -3181,6 +3181,14 @@ private:
 		const PeersMap &peers,
 		const Data::GiveawayResults &data,
 		Fn<QByteArray(int messageId, QByteArray text)> wrapMessageLink);
+	[[nodiscard]] QByteArray pushDice(
+		const Data::MediaDice &data,
+		const QString &internalLinksDomain,
+		const QString &relativeLinkBase);
+	[[nodiscard]] QByteArray pushStory(
+		const Data::MediaStory &data,
+		const QString &internalLinksDomain,
+		const QString &relativeLinkBase);
 
 	File _file;
 	QByteArray _composedStart;
@@ -4487,6 +4495,10 @@ QByteArray HtmlWriter::Wrap::pushMedia(
 		return pushGiveaway(peers, *giveaway);
 	} else if (const auto giveaway = std::get_if<GiveawayResults>(&content)) {
 		return pushGiveaway(peers, *giveaway, wrapMessageLink);
+	} else if (const auto dice = std::get_if<MediaDice>(&content)) {
+		return pushDice(*dice, internalLinksDomain, _base);
+	} else if (const auto story = std::get_if<MediaStory>(&content)) {
+		return pushStory(*story, internalLinksDomain, _base);
 	}
 	Assert(v::is_null(content));
 	return QByteArray();
@@ -4879,7 +4891,12 @@ QByteArray HtmlWriter::Wrap::pushTodoList(
 	result.append(SerializeString("To-do List"));
 	result.append(popTag());
 	const auto details = [&](const TodoListItem &item) {
-		return QByteArray(""); // #TODO todo
+		if (item.id) {
+			return " <span class=\"details\">#"
+				+ Data::NumberToString(item.id)
+				+ "</span>";
+		}
+		return QByteArray("");
 	};
 	for (const auto &item : data.items) {
 		result.append(pushDiv("answer"));
@@ -4889,6 +4906,72 @@ QByteArray HtmlWriter::Wrap::pushTodoList(
 		result.append(popTag());
 	}
 	result.append(popTag());
+	result.append(popTag());
+	return result;
+}
+
+QByteArray HtmlWriter::Wrap::pushDice(
+		const Data::MediaDice &data,
+		const QString &internalLinksDomain,
+		const QString &relativeLinkBase) {
+	using namespace Data;
+	auto result = pushDiv("media_wrap clearfix");
+	result.append(pushDiv("media_dice"));
+	result.append(pushDiv("emoji"));
+	result.append(SerializeString(data.emoji));
+	result.append(popTag());
+	result.append(pushDiv("value bold"));
+	result.append(NumberToString(data.value));
+	result.append(popTag());
+	if (data.hasOutcome) {
+		result.append(pushDiv("details"));
+		result.append(SerializeString("Game outcome"));
+		result.append(popTag());
+		if (data.stakeNanoTon > 0) {
+			result.append(pushDiv("stake"));
+			result.append(SerializeString("Stake: "));
+			result.append(NumberToString(data.stakeNanoTon));
+			result.append(SerializeString(" TON"));
+			result.append(popTag());
+		}
+		if (data.nanoTon > 0) {
+			result.append(pushDiv("payout"));
+			result.append(SerializeString("Payout: "));
+			result.append(NumberToString(data.nanoTon));
+			result.append(SerializeString(" TON"));
+			result.append(popTag());
+		}
+		if (!data.seed.isEmpty()) {
+			result.append(pushDiv("seed"));
+			result.append(SerializeString("Seed: "));
+			result.append(SerializeString(data.seed));
+			result.append(popTag());
+		}
+		result.append(popTag());
+	}
+	result.append(popTag());
+	return result;
+}
+
+QByteArray HtmlWriter::Wrap::pushStory(
+		const Data::MediaStory &data,
+		const QString &internalLinksDomain,
+		const QString &relativeLinkBase) {
+	using namespace Data;
+	auto result = pushDiv("media_wrap clearfix");
+	result.append(pushDiv("media_story"));
+	result.append(pushDiv("story_peer"));
+	result.append(SerializeString(Data::NumberToString(Data::PeerToBareId(data.peerId))));
+	result.append(popTag());
+	result.append(pushDiv("story_id bold"));
+	result.append(SerializeString("Story #"));
+	result.append(Data::NumberToString(data.id));
+	result.append(popTag());
+	if (data.viaMention) {
+		result.append(pushDiv("details"));
+		result.append(SerializeString("via mention"));
+		result.append(popTag());
+	}
 	result.append(popTag());
 	return result;
 }
@@ -5280,6 +5363,15 @@ MediaData HtmlWriter::Wrap::prepareMediaData(
 		result.status = Data::FormatMoneyAmount(data.stars, "XTR");
 	}, [](const UnsupportedMedia &data) {
 		Unexpected("Unsupported message.");
+	}, [&](const MediaDice &data) {
+		result.classes = "media_dice";
+		result.title = data.emoji;
+		if (data.hasOutcome) {
+			result.status = "Game outcome";
+		}
+	}, [&](const MediaStory &data) {
+		result.classes = "media_story";
+		result.title = "Story #" + Data::NumberToString(data.id);
 	}, [](v::null_t) {});
 	return result;
 }

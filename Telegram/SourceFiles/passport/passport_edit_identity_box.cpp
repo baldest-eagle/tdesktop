@@ -149,7 +149,7 @@ IdentityBox::IdentityBox(
 : _controller(controller)
 , _valueIndex(valueIndex)
 , _files(std::move(files))
-, _uploadScan(this, "Upload scans") // #TODO langs
+, _uploadScan(this, langFactory(lng_passport_upload_scans))
 , _name(
 	this,
 	st::defaultInputField,
@@ -169,8 +169,7 @@ void IdentityBox::prepare() {
 	for (const auto &scan : _files) {
 		_scans.push_back(object_ptr<ScanButton>(
 			this,
-			QString("Scan %1").arg(++index), // #TODO langs
-			scan.status));
+			langFactory(lng_passport_scan_number).arg(++index), scan.status));
 		_scans.back()->setImage(scan.thumb);
 		_scans.back()->resizeToWidth(st::boxWideWidth);
 		_scans.back()->deleteClicks(

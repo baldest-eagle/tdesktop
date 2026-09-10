@@ -523,7 +523,6 @@ void Row::PaintCornerBadgeFrame(
 		if (!hq) {
 			hq.emplace(q);
 		}
-		// TODO: Unnecessarily repaints on activating peer.
 		q.setCompositionMode(QPainter::CompositionMode_Source);
 		const auto &s = st::dialogsSubscriptionBadgeSkip;
 		auto path = SubscriptionOutlinePath();
@@ -755,18 +754,19 @@ void Row::paintUserpic(
 		&& !(badgeUser && Data::IsUserOnline(badgeUser))
 		&& !subscribed
 		&& !insideCommunity;
+	const auto activeChanged = (_cornerBadgeUserpic->active != active);
+	_cornerBadgeUserpic->active = active;
 	if (keyChanged
 		|| !_cornerBadgeUserpic->layersManager.isFinished()
-		|| _cornerBadgeUserpic->active != active
 		|| _cornerBadgeUserpic->hidden != (hidden ? 1 : 0)
 		|| _cornerBadgeUserpic->frameIndex != frameIndex
 		|| _cornerBadgeUserpic->storiesCount != storiesCount
 		|| _cornerBadgeUserpic->storiesUnreadCount != storiesUnreadCount
 		|| _cornerBadgeUserpic->storiesHasVideoStream != storiesHasVideoStream
-		|| videoUserpic) {
+		|| videoUserpic
+		|| (activeChanged && !subscribed && !communityMember)) {
 		_cornerBadgeUserpic->key = key;
 		_cornerBadgeUserpic->paletteVersion = paletteVersion;
-		_cornerBadgeUserpic->active = active;
 		_cornerBadgeUserpic->hidden = hidden ? 1 : 0;
 		_cornerBadgeUserpic->storiesCount = storiesCount;
 		_cornerBadgeUserpic->storiesUnreadCount = storiesUnreadCount;

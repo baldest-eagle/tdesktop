@@ -2134,6 +2134,21 @@ QByteArray SerializeMessage(
 			{ "is_refunded", data.refunded ? "true" : "false" },
 			{ "is_only_new_subscribers", (!data.all) ? "true" : "false" },
 		}));
+	}, [&](const MediaDice &data) {
+		pushBare("dice", SerializeObject(context, {
+			{ "emoji", SerializeString(data.emoji) },
+			{ "value", NumberToString(data.value) },
+			{ "has_outcome", data.hasOutcome ? "true" : "false" },
+			{ "seed", SerializeString(data.seed) },
+			{ "nano_ton", NumberToString(data.nanoTon) },
+			{ "stake_nano_ton", NumberToString(data.stakeNanoTon) },
+		}));
+	}, [&](const MediaStory &data) {
+		pushBare("story", SerializeObject(context, {
+			{ "peer_id", NumberToString(PeerToBareId(data.peerId)) },
+			{ "id", NumberToString(data.id) },
+			{ "via_mention", data.viaMention ? "true" : "false" },
+		}));
 	}, [&](const PaidMedia &data) {
 		push("paid_stars_amount", data.stars);
 	}, [&](const UnsupportedMedia &) {

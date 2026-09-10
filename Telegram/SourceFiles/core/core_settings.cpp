@@ -461,7 +461,7 @@ QByteArray Settings::serialize() const {
 			<< qint32(_hardwareAcceleratedVideo ? 1 : 0)
 			<< qint32(_suggestAnimatedEmoji ? 1 : 0)
 			<< qint32(_cornerReaction.current() ? 1 : 0)
-			<< qint32(_translateButtonEnabled ? 1 : 0)
+			<< qint32(_translateButtonEnabled ? 1 : 0);
 
 		stream
 			<< qint32(skipLanguages.size());

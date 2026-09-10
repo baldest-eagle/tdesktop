@@ -921,8 +921,9 @@ void SessionPrivate::tryToSend() {
 							added = true;
 						}
 
-						// #TODO rewrite so that it will always hold.
-						//Assert(!haveSent.contains(msgId));
+						// Assert(!haveSent.contains(msgId));
+						QWriteLocker locker2(_sessionData->haveSentMutex());
+						auto &haveSent = _sessionData->haveSentMap();
 						haveSent.emplace(msgId, request);
 						sentIdsWrap.messages.push_back(msgId);
 						scheduleCheckSentRequests = true;

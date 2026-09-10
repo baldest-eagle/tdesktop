@@ -2083,16 +2083,13 @@ void Updates::feedUpdate(const MTPUpdate &update) {
 				? user->firstName
 				: qs(d.vfirst_name());
 			const auto last = contact ? user->lastName : qs(d.vlast_name());
-			// #TODO usernames
-			const auto username = d.vusernames().v.isEmpty()
-				? QString()
-				: qs(d.vusernames().v.front().data().vusername());
+			user->setUsernames(Api::Usernames::FromTL(d.vusernames()));
+			const auto username = user->username();
 			user->setName(
 				TextUtilities::SingleLine(first),
 				TextUtilities::SingleLine(last),
 				user->nameOrPhone,
 				TextUtilities::SingleLine(username));
-			user->setUsernames(Api::Usernames::FromTL(d.vusernames()));
 		}
 	} break;
 

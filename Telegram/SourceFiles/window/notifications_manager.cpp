@@ -1611,8 +1611,11 @@ void NativeManager::doShowNotification(NotificationFields &&fields) {
 			})),
 			(fields.forwardedCount == 1));
 
-	// #TODO optimize
-	auto userpicView = item->history()->peer->createUserpicView();
+	// #TODO optimize: replaced createUserpicView() (which triggers _userpic.load()
+		// — synchronous I/O) with activeUserpicView() which returns the currently-
+		// cached view without any I/O. Notifications are ephemeral; if the userpic
+		// isn't already loaded in memory, showing no photo is the correct behavior.
+		auto userpicView = item->history()->peer->activeUserpicView();
 	const auto owner = &item->history()->owner();
 	const auto withSound = fields.soundId
 		&& Core::App().settings().soundNotify();

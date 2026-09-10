@@ -1617,8 +1617,8 @@ void Filler::addToggleNoForwards() {
 }
 
 void Filler::addTTLSubmenu(bool addSeparator) {
-	if (_thread->asTopic() || !_peer || _peer->isMonoforum()) {
-		return; // #TODO later forum
+	if (_thread->asTopic() || !_peer) {
+		return;
 	}
 	const auto validator = TTLMenu::TTLValidator(
 		_controller->uiShow(),

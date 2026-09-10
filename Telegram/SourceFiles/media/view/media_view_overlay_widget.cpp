@@ -588,12 +588,20 @@ public:
 	bool showMediaPreview(
 			Data::FileOrigin origin,
 			not_null<DocumentData*> document) const override {
-		return false; // #TODO stories
+		if (_widget->_session || _widget->_storiesSession) {
+			_widget->displayDocument(document, anim::activation::normal);
+			return true;
+		}
+		return false;
 	}
 	bool showMediaPreview(
 			Data::FileOrigin origin,
 			not_null<PhotoData*> photo) const override {
-		return false; // #TODO stories
+		if (_widget->_session || _widget->_storiesSession) {
+			_widget->displayPhoto(photo, anim::activation::normal);
+			return true;
+		}
+		return false;
 	}
 
 	void processChosenSticker(

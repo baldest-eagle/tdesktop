@@ -6175,6 +6175,10 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 "lng_confirm_phone_success" = "Success!\n\nThe deletion process was canceled for your account {phone}. You may close this window now.";
 "lng_confirm_phone_send" = "Send";
 "lng_confirm_phone_enter_code" = "Please enter the code.";
+"lng_support_information" = "Support information";
+"lng_edit_support_information" = "Edit support information";
+"lng_search_for_templates" = "Search for templates";
+"lng_confirmation_title" = "Confirmation";
 
 "lng_theme_editor_no_keys" = "No keys in the palette yet";
 "lng_theme_editor_cant_change_theme" = "You can't apply a new theme while editing the color palette. Please close the theme editor first.";
@@ -7210,6 +7214,7 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 "lng_passport_form_error" = "Could not get authorization form.";
 "lng_passport_save_value" = "Save";
 "lng_passport_scan_index" = "Scan {index}";
+"lng_passport_scan_number" = "Scan %1";
 "lng_passport_upload_scans" = "Upload scans";
 "lng_passport_upload_more" = "Upload additional scans";
 "lng_passport_selfie_title" = "Selfie";
