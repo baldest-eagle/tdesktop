@@ -667,6 +667,9 @@ void MainWindow::initHook() {
 		return;
 	}
 
+	const auto exStyle = GetWindowLongPtr(_hWnd, GWL_EXSTYLE);
+	SetWindowLongPtr(_hWnd, GWL_EXSTYLE, exStyle | WS_EX_APPWINDOW);
+
 	WTSRegisterSessionNotification(_hWnd, NOTIFY_FOR_THIS_SESSION);
 
 	using namespace base::Platform;

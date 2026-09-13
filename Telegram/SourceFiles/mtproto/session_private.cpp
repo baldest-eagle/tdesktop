@@ -25,6 +25,7 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 
 #include <ksandbox.h>
 #include <zlib.h>
+#include <vector>
 
 namespace MTP {
 namespace details {
@@ -921,9 +922,7 @@ void SessionPrivate::tryToSend() {
 							added = true;
 						}
 
-						// Assert(!haveSent.contains(msgId));
-						QWriteLocker locker2(_sessionData->haveSentMutex());
-						auto &haveSent = _sessionData->haveSentMap();
+						// haveSent is already locked by locker2 at line 868
 						haveSent.emplace(msgId, request);
 						sentIdsWrap.messages.push_back(msgId);
 						scheduleCheckSentRequests = true;
@@ -2122,6 +2121,11 @@ void SessionPrivate::requestsAcked(const QVector<MTPlong> &ids, bool byResponse)
 	DEBUG_LOG(("Message Info: requests acked, ids %1").arg(LogIdsVector(ids)));
 
 	QVector<MTPlong> toAckMore;
+	struct ResendingToAck {
+		mtpMsgId msgId = 0;
+		mtpRequestId requestId = 0;
+	};
+	std::vector<ResendingToAck> resendingToAck;
 	{
 		QWriteLocker locker2(_sessionData->haveSentMutex());
 		auto &haveSent = _sessionData->haveSentMap();
@@ -2163,26 +2167,31 @@ void SessionPrivate::requestsAcked(const QVector<MTPlong> &ids, bool byResponse)
 					continue;
 				}
 				_resendingIds.erase(i);
-
-				QWriteLocker locker4(_sessionData->toSendMutex());
-				auto &toSend = _sessionData->toSendMap();
-				const auto j = toSend.find(requestId);
-				if (j == end(toSend)) {
-					DEBUG_LOG(("Message Info: msgId %1 was found in recent resent, requestId %2 was not found in prepared to send").arg(msgId).arg(requestId));
-					continue;
-				}
-				if (j->second->requestId != requestId) {
-					DEBUG_LOG(("Message Error: for msgId %1 found resent request, requestId %2, contains requestId %3").arg(msgId).arg(requestId).arg(j->second->requestId));
-				} else {
-					DEBUG_LOG(("Message Info: acked msgId %1 that was prepared to resend, requestId %2").arg(msgId).arg(requestId));
-				}
-
-				_ackedIds.emplace(msgId, j->second->requestId);
-
-				toSend.erase(j);
+				resendingToAck.push_back({ msgId, requestId });
 				continue;
 			}
 			DEBUG_LOG(("Message Info: msgId %1 was not found in recent resent either").arg(msgId));
+		}
+	}
+
+	if (!resendingToAck.empty()) {
+		QWriteLocker locker4(_sessionData->toSendMutex());
+		auto &toSend = _sessionData->toSendMap();
+		for (const auto &item : resendingToAck) {
+			const auto j = toSend.find(item.requestId);
+			if (j == end(toSend)) {
+				DEBUG_LOG(("Message Info: msgId %1 was found in recent resent, requestId %2 was not found in prepared to send").arg(item.msgId).arg(item.requestId));
+				continue;
+			}
+			if (j->second->requestId != item.requestId) {
+				DEBUG_LOG(("Message Error: for msgId %1 found resent request, requestId %2, contains requestId %3").arg(item.msgId).arg(item.requestId).arg(j->second->requestId));
+			} else {
+				DEBUG_LOG(("Message Info: acked msgId %1 that was prepared to resend, requestId %2").arg(item.msgId).arg(item.requestId));
+			}
+
+			_ackedIds.emplace(item.msgId, j->second->requestId);
+
+			toSend.erase(j);
 		}
 	}
 

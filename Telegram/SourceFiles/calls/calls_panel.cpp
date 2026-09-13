@@ -219,6 +219,7 @@ void Panel::showAndActivate() {
 	if (state & Qt::WindowMinimized) {
 		window()->setWindowState(state & ~Qt::WindowMinimized);
 	}
+	Ui::Platform::RestoreWindow(window());
 	window()->raise();
 	window()->activateWindow();
 	window()->setFocus();

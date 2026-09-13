@@ -621,6 +621,9 @@ void Application::activate() {
 	if (_lastActiveWindow) {
 		_lastActiveWindow->widget()->showFromTray();
 	}
+	if (_calls) {
+		_calls->activateCurrentCall();
+	}
 }
 
 auto Application::prepareEmojiSourceImages()
