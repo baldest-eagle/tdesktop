@@ -222,7 +222,7 @@ public:
 
 	[[nodiscard]] static not_null<PeerData*> TrackPeer(
 		const std::unique_ptr<VideoTrack> &track);
-	[[nodiscard]] static not_null<Webrtc::VideoTrack*> TrackPointer(
+	[[nodiscard]] static std::shared_ptr<Webrtc::VideoTrack> TrackPointer(
 		const std::unique_ptr<VideoTrack> &track);
 	[[nodiscard]] static rpl::producer<QSize> TrackSizeValue(
 		const std::unique_ptr<VideoTrack> &track);

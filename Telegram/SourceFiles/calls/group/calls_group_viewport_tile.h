@@ -32,6 +32,9 @@ public:
 		bool self);
 
 	[[nodiscard]] not_null<Webrtc::VideoTrack*> track() const {
+		return _track.track.get();
+	}
+	[[nodiscard]] std::shared_ptr<Webrtc::VideoTrack> trackShared() const {
 		return _track.track;
 	}
 	[[nodiscard]] MembersRow *row() const {

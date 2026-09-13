@@ -21,19 +21,253 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "window/window_session_controller.h"
 #include "main/main_session.h"
 #include "ui/layers/show.h"
+#include "ui/abstract_button.h"
 #include "ui/widgets/buttons.h"
 #include "ui/widgets/labels.h"
 
+#include <QtGui/QCloseEvent>
 #include <QtGui/QGuiApplication>
 #include <QtGui/QKeyEvent>
 #include <QtGui/QMouseEvent>
 #include <QtGui/QPainter>
+#include <QtGui/QPainterPath>
 #include <QtGui/QScreen>
 #include <QtWidgets/QApplication>
 
 #include "styles/style_calls.h"
 
 namespace Calls::Group {
+
+class HeaderButton final : public Ui::AbstractButton {
+public:
+	enum class Type {
+		Close,
+		Search,
+		Passthrough,
+	};
+
+	HeaderButton(QWidget *parent, Type type)
+	: AbstractButton(parent)
+	, _type(type) {
+		setPointerCursor(true);
+		resize(28, 28);
+	}
+
+	void setActive(bool active) {
+		if (_active != active) {
+			_active = active;
+			update();
+		}
+	}
+
+protected:
+	void paintEvent(QPaintEvent *e) override {
+		auto p = QPainter(this);
+		p.setRenderHint(QPainter::Antialiasing);
+
+		const auto r = rect();
+		if (isDown()) {
+			p.setPen(Qt::NoPen);
+			p.setBrush(QColor(255, 255, 255, 40));
+			p.drawRoundedRect(r.adjusted(1, 1, -1, -1), 5, 5);
+		} else if (isOver()) {
+			p.setPen(Qt::NoPen);
+			p.setBrush(QColor(255, 255, 255, _type == Type::Close ? 55 : 25));
+			p.drawRoundedRect(r.adjusted(1, 1, -1, -1), 5, 5);
+		} else if (_active) {
+			p.setPen(Qt::NoPen);
+			p.setBrush(QColor(82, 136, 236, 80));
+			p.drawRoundedRect(r.adjusted(1, 1, -1, -1), 5, 5);
+		}
+
+		auto iconColor = _active
+			? QColor(100, 175, 255)
+			: (_type == Type::Close && isOver())
+			? QColor(255, 90, 90)
+			: isOver()
+			? QColor(255, 255, 255)
+			: QColor(200, 205, 215);
+
+		p.setPen(QPen(iconColor, 1.8, Qt::SolidLine, Qt::RoundCap, Qt::RoundJoin));
+
+		const auto center = r.center();
+		if (_type == Type::Close) {
+			const int d = 5;
+			p.drawLine(center.x() - d, center.y() - d, center.x() + d, center.y() + d);
+			p.drawLine(center.x() + d, center.y() - d, center.x() - d, center.y() + d);
+		} else if (_type == Type::Search) {
+			p.setBrush(Qt::NoBrush);
+			p.drawEllipse(QPoint(center.x() - 1, center.y() - 1), 5, 5);
+			p.drawLine(center.x() + 3, center.y() + 3, center.x() + 7, center.y() + 7);
+		} else if (_type == Type::Passthrough) {
+			p.setBrush(Qt::NoBrush);
+			p.drawLine(center.x(), center.y() - 6, center.x(), center.y() + 3);
+			p.drawLine(center.x() - 5, center.y() - 2, center.x() + 5, center.y() - 2);
+			p.drawLine(center.x() - 3, center.y() - 6, center.x() + 3, center.y() - 6);
+			p.drawLine(center.x(), center.y() + 3, center.x(), center.y() + 7);
+		}
+	}
+
+private:
+	Type _type;
+	bool _active = false;
+};
+
+class OpacitySlider final : public QWidget {
+public:
+	OpacitySlider(QWidget *parent)
+	: QWidget(parent) {
+		setCursor(Qt::PointingHandCursor);
+		setToolTip(u"Adjust overlay transparency (or Ctrl+Wheel)"_q);
+	}
+
+	void setValue(float val) {
+		_value = std::clamp(val, _minVal, _maxVal);
+		update();
+	}
+
+	[[nodiscard]] float value() const {
+		return _value;
+	}
+
+	void setChangedCallback(Fn<void(float)> callback) {
+		_callback = std::move(callback);
+	}
+
+protected:
+	void paintEvent(QPaintEvent *e) override {
+		auto p = QPainter(this);
+		p.setRenderHint(QPainter::Antialiasing);
+
+		const auto center = QPointF(10.0, height() / 2.0);
+		const auto iconColor = (_hovered || _dragging)
+			? QColor(220, 225, 235)
+			: QColor(160, 165, 175);
+		p.setPen(QPen(iconColor, 1.2));
+		p.setBrush(Qt::NoBrush);
+		p.drawEllipse(center, 5.0, 5.0);
+		p.setBrush(iconColor);
+		p.drawPie(QRectF(5.0, height() / 2.0 - 5.0, 10.0, 10.0), 90 * 16, 180 * 16);
+
+		const auto trackLeft = 24.0f;
+		const auto trackRight = float(width() - 40);
+		const auto trackY = (height() - 4) / 2.0f;
+		p.setPen(Qt::NoPen);
+		p.setBrush(QColor(255, 255, 255, 38));
+		p.drawRoundedRect(QRectF(trackLeft, trackY, trackRight - trackLeft, 4.0), 2.0, 2.0);
+
+		const auto fraction = std::clamp((_value - _minVal) / (_maxVal - _minVal), 0.0f, 1.0f);
+		const auto thumbX = trackLeft + fraction * (trackRight - trackLeft);
+
+		p.setBrush((_hovered || _dragging) ? QColor(90, 155, 255) : QColor(72, 134, 232));
+		p.drawRoundedRect(QRectF(trackLeft, trackY, thumbX - trackLeft, 4.0), 2.0, 2.0);
+
+		const auto radius = _dragging ? 6.5 : (_hovered ? 6.0 : 5.0);
+		if (_hovered || _dragging) {
+			p.setPen(Qt::NoPen);
+			p.setBrush(QColor(90, 155, 255, 60));
+			p.drawEllipse(QPointF(thumbX, height() / 2.0), radius + 3.0, radius + 3.0);
+		}
+		p.setPen(QPen(QColor(0, 0, 0, 45), 1.0));
+		p.setBrush(QColor(255, 255, 255));
+		p.drawEllipse(QPointF(thumbX, height() / 2.0), radius, radius);
+
+		const auto pct = QString::number(int(std::round(_value * 100))) + u"%"_q;
+		QFont font = st::normalFont;
+		font.setPointSize(std::max(8, font.pointSize() - 2));
+		font.setWeight(QFont::DemiBold);
+		p.setFont(font);
+		p.setPen((_hovered || _dragging) ? QColor(240, 245, 255) : QColor(160, 165, 175));
+		p.drawText(QRect(width() - 36, 0, 36, height()), Qt::AlignVCenter | Qt::AlignLeft, pct);
+	}
+
+	void mousePressEvent(QMouseEvent *e) override {
+		if (e->button() == Qt::LeftButton) {
+			_dragging = true;
+			updateFromPos(e->pos().x());
+			e->accept();
+			return;
+		}
+		QWidget::mousePressEvent(e);
+	}
+
+	void mouseMoveEvent(QMouseEvent *e) override {
+		if (_dragging) {
+			updateFromPos(e->pos().x());
+			e->accept();
+			return;
+		}
+		QWidget::mouseMoveEvent(e);
+	}
+
+	void mouseReleaseEvent(QMouseEvent *e) override {
+		if (e->button() == Qt::LeftButton && _dragging) {
+			_dragging = false;
+			update();
+			e->accept();
+			return;
+		}
+		QWidget::mouseReleaseEvent(e);
+	}
+
+#if QT_VERSION >= QT_VERSION_CHECK(6, 0, 0)
+	void enterEvent(QEnterEvent *e) override {
+		_hovered = true;
+		update();
+		QWidget::enterEvent(e);
+	}
+#else
+	void enterEvent(QEvent *e) override {
+		_hovered = true;
+		update();
+		QWidget::enterEvent(e);
+	}
+#endif
+
+	void leaveEvent(QEvent *e) override {
+		_hovered = false;
+		update();
+		QWidget::leaveEvent(e);
+	}
+
+	void wheelEvent(QWheelEvent *e) override {
+		const auto delta = e->angleDelta().y();
+		if (delta > 0) {
+			setValue(_value + 0.05f);
+		} else if (delta < 0) {
+			setValue(_value - 0.05f);
+		}
+		if (_callback) {
+			_callback(_value);
+		}
+		e->accept();
+	}
+
+private:
+	void updateFromPos(int x) {
+		const auto trackLeft = 24.0f;
+		const auto trackRight = float(width() - 40);
+		if (trackRight <= trackLeft) {
+			return;
+		}
+		const auto fraction = std::clamp((float(x) - trackLeft) / (trackRight - trackLeft), 0.0f, 1.0f);
+		const auto newVal = std::clamp(_minVal + fraction * (_maxVal - _minVal), _minVal, _maxVal);
+		if (std::abs(newVal - _value) > 0.005f) {
+			_value = newVal;
+			update();
+			if (_callback) {
+				_callback(_value);
+			}
+		}
+	}
+
+	float _value = 0.92f;
+	float _minVal = 0.25f;
+	float _maxVal = 1.0f;
+	bool _dragging = false;
+	bool _hovered = false;
+	Fn<void(float)> _callback;
+};
 
 FloatingOverlay::FloatingOverlay(not_null<Panel*> panel)
 : QWidget(nullptr, Qt::Window | Qt::FramelessWindowHint | Qt::WindowStaysOnTopHint)
@@ -42,7 +276,7 @@ FloatingOverlay::FloatingOverlay(not_null<Panel*> panel)
 	setAttribute(Qt::WA_ShowWithoutActivating);
 
 	const auto screen = QApplication::primaryScreen()->availableGeometry();
-	setGeometry(screen.width() - 320, 100, 300, 400);
+	setGeometry(screen.width() - 360, 100, 340, 480);
 
 	_tabs.push_back({ nullptr, u"Call Chat"_q });
 
@@ -61,10 +295,17 @@ void FloatingOverlay::show() {
 	QWidget::show();
 	raise();
 	activateWindow();
+	_panel->overlayVisibilityChanged();
 }
 
 void FloatingOverlay::hide() {
 	QWidget::hide();
+	_panel->overlayVisibilityChanged();
+}
+
+void FloatingOverlay::closeEvent(QCloseEvent *event) {
+	hide();
+	event->ignore();
 }
 
 void FloatingOverlay::toggle() {
@@ -124,10 +365,10 @@ void FloatingOverlay::updateTabRects() {
 		return;
 	}
 	int x = 10;
-	const int y = 5;
+	const int y = 6;
 	const int h = 26;
 
-	QFont font = st::callButtonLabel.style.font;
+	QFont font = st::normalFont;
 	QFontMetrics fm(font);
 
 	for (int i = 0; i < _tabs.size(); ++i) {
@@ -148,6 +389,18 @@ void FloatingOverlay::updateTabRects() {
 void FloatingOverlay::toggleSearch() {
 	_searchOpen = !_searchOpen;
 	_searchQuery = QString();
+	if (_searchBtn) {
+		_searchBtn->setActive(_searchOpen);
+	}
+	if (_searchOpen) {
+		if (_messagesUi) {
+			_messagesUi->move(-10000, -10000, 0, 0);
+		}
+	} else {
+		if (_messagesUi) {
+			_messagesUi->move(4, 39, width() - 8, height() - 39 - 23);
+		}
+	}
 	updateSearchResults();
 	update();
 }
@@ -162,7 +415,7 @@ void FloatingOverlay::updateSearchResults() {
 		return;
 	}
 	const auto &participants = real->participants();
-	int y = 45;
+	int y = 46;
 	const int rowHeight = 32;
 	for (const auto &p : participants) {
 		const auto peer = p.peer;
@@ -170,10 +423,10 @@ void FloatingOverlay::updateSearchResults() {
 		if (!_searchQuery.isEmpty() && !name.contains(_searchQuery, Qt::CaseInsensitive)) {
 			continue;
 		}
-		const auto rowRect = QRect(10, y, width() - 20, rowHeight);
-		const auto openChatRect = QRect(width() - 170, y + 4, 45, 24);
-		const auto pinScreenRect = QRect(width() - 120, y + 4, 40, 24);
-		const auto addOverlayRect = QRect(width() - 75, y + 4, 65, 24);
+		const auto rowRect = QRect(8, y, width() - 16, rowHeight);
+		const auto openChatRect = QRect(width() - 160, y + 4, 45, 24);
+		const auto pinScreenRect = QRect(width() - 110, y + 4, 40, 24);
+		const auto addOverlayRect = QRect(width() - 65, y + 4, 55, 24);
 		_searchResults.push_back({
 			peer,
 			name,
@@ -183,7 +436,7 @@ void FloatingOverlay::updateSearchResults() {
 			addOverlayRect,
 		});
 		y += rowHeight + 4;
-		if (y > height() - 50) {
+		if (y > height() - 60) {
 			break;
 		}
 	}
@@ -253,7 +506,7 @@ void FloatingOverlay::mousePressEvent(QMouseEvent *event) {
 			}
 		}
 
-		if (_tabs.size() > 1) {
+		if (_tabs.size() > 1 && !_searchOpen && pos.y() <= 38) {
 			updateTabRects();
 			for (int i = 0; i < _tabs.size(); ++i) {
 				const auto &tr = _tabRects[i];
@@ -269,9 +522,11 @@ void FloatingOverlay::mousePressEvent(QMouseEvent *event) {
 			}
 		}
 
-		_dragging = true;
-		_dragStart = event->globalPos();
-		_startGeometry = geometry();
+		if (pos.y() <= 38 || pos.y() >= height() - 26) {
+			_dragging = true;
+			_dragStart = event->globalPos();
+			_startGeometry = geometry();
+		}
 	}
 	QWidget::mousePressEvent(event);
 }
@@ -297,9 +552,12 @@ void FloatingOverlay::wheelEvent(QWheelEvent *event) {
 		if (delta > 0) {
 			_opacity = std::min(1.0f, _opacity + 0.05f);
 		} else if (delta < 0) {
-			_opacity = std::max(0.2f, _opacity - 0.05f);
+			_opacity = std::max(0.25f, _opacity - 0.05f);
 		}
 		setWindowOpacity(_opacity);
+		if (_opacitySlider) {
+			_opacitySlider->setValue(_opacity);
+		}
 		update();
 		event->accept();
 		return;
@@ -309,28 +567,79 @@ void FloatingOverlay::wheelEvent(QWheelEvent *event) {
 
 void FloatingOverlay::paintEvent(QPaintEvent *event) {
 	auto p = QPainter(this);
-	p.setOpacity(_opacity);
-	p.fillRect(rect(), QColor(30, 30, 30, 220));
-	p.setPen(QColor(255, 255, 255, 100));
-	p.drawRect(rect().adjusted(0, 0, -1, -1));
+	p.setRenderHint(QPainter::Antialiasing);
+
+	const auto fullRect = rect();
+
+	p.setPen(QColor(255, 255, 255, 30));
+	p.setBrush(QColor(24, 26, 32, 245));
+	p.drawRoundedRect(fullRect.adjusted(0, 0, -1, -1), 10, 10);
+
+	QPainterPath headerPath;
+	headerPath.moveTo(0, 38);
+	headerPath.lineTo(0, 10);
+	headerPath.arcTo(0, 0, 20, 20, 180, -90);
+	headerPath.lineTo(width() - 10, 0);
+	headerPath.arcTo(width() - 20, 0, 20, 20, 90, -90);
+	headerPath.lineTo(width(), 38);
+	headerPath.closeSubpath();
+	p.fillPath(headerPath, QColor(16, 18, 22, 230));
+
+	p.setPen(QColor(255, 255, 255, 20));
+	p.drawLine(0, 38, width(), 38);
+
+	const auto footerH = 26;
+	QPainterPath footerPath;
+	footerPath.moveTo(0, height() - footerH);
+	footerPath.lineTo(width(), height() - footerH);
+	footerPath.lineTo(width(), height() - 10);
+	footerPath.arcTo(width() - 20, height() - 20, 20, 20, 0, -90);
+	footerPath.lineTo(10, height());
+	footerPath.arcTo(0, height() - 20, 20, 20, 270, -90);
+	footerPath.closeSubpath();
+	p.fillPath(footerPath, QColor(16, 18, 22, 210));
+
+	p.setPen(QColor(255, 255, 255, 18));
+	p.drawLine(0, height() - footerH, width(), height() - footerH);
+
+	QFont hintFont = st::normalFont;
+	hintFont.setPointSize(std::max(8, hintFont.pointSize() - 2));
+	p.setFont(hintFont);
+	p.setPen(QColor(135, 140, 150, 190));
+	p.drawText(QRect(185, height() - footerH, width() - 195, footerH), Qt::AlignVCenter | Qt::AlignRight,
+		u"Ctrl+Shift+T hide"_q);
+
+	if (_tabs.size() <= 1 && !_searchOpen) {
+		p.setFont(st::semiboldFont);
+		p.setPen(QColor(240, 240, 245));
+		p.drawText(QRect(12, 5, width() - 115, 16), Qt::AlignVCenter | Qt::AlignLeft, u"Call Overlay"_q);
+
+		QFont subFont = st::normalFont;
+		subFont.setPointSize(std::max(8, subFont.pointSize() - 2));
+		p.setFont(subFont);
+		p.setPen(QColor(140, 145, 155));
+		const auto subtitle = (_tabs.size() == 1 && _tabs[0].peer)
+			? _tabs[0].name
+			: u"Live Chat \u2022 Ctrl+Shift+T"_q;
+		p.drawText(QRect(12, 21, width() - 115, 14), Qt::AlignVCenter | Qt::AlignLeft, subtitle);
+	}
 
 	if (_tabs.size() > 1 && !_searchOpen) {
 		updateTabRects();
-		QFont font = st::callButtonLabel.style.font;
+		QFont font = st::normalFont;
 		p.setFont(font);
 		for (int i = 0; i < _tabs.size(); ++i) {
 			const auto &tab = _tabs[i];
 			const auto &tr = _tabRects[i];
 			const bool active = (i == _activeTabIndex);
 
+			p.setPen(Qt::NoPen);
 			if (active) {
-				p.fillRect(tr.rect, QColor(60, 60, 60, 200));
+				p.setBrush(QColor(60, 65, 80, 220));
 			} else {
-				p.fillRect(tr.rect, QColor(40, 40, 40, 100));
+				p.setBrush(QColor(35, 38, 48, 160));
 			}
-
-			p.setPen(QColor(255, 255, 255, 40));
-			p.drawRect(tr.rect);
+			p.drawRoundedRect(tr.rect, 5, 5);
 
 			bool hasUnread = false;
 			if (tab.peer) {
@@ -344,44 +653,51 @@ void FloatingOverlay::paintEvent(QPaintEvent *event) {
 				p.drawEllipse(QPoint(tr.rect.left() + 7, tr.rect.center().y()), 3, 3);
 			}
 
-			p.setPen(active ? QColor(255, 255, 255) : QColor(200, 200, 200));
+			p.setPen(active ? QColor(255, 255, 255) : QColor(190, 195, 205));
 			const int textOffset = (hasUnread && !active) ? 14 : 8;
 			p.drawText(tr.rect.adjusted(textOffset, 0, 0, 0), Qt::AlignVCenter | Qt::AlignLeft, tab.name);
 
 			if (i > 0) {
 				p.setPen(QColor(255, 255, 255, 120));
-				p.drawText(tr.closeRect, Qt::AlignCenter, u"x"_q);
+				p.drawText(tr.closeRect, Qt::AlignCenter, u"\u00d7"_q);
 			}
 		}
 	}
 
 	if (_searchOpen) {
-		p.fillRect(QRect(0, 0, width(), height()), QColor(20, 20, 20, 245));
+		p.fillRect(QRect(0, 38, width(), height() - 38 - 26), QColor(20, 22, 28, 250));
 
-		p.setFont(st::callButtonLabel.style.font);
+		p.setFont(st::semiboldFont);
 		p.setPen(QColor(255, 255, 255));
-		const auto prompt = u"Search Callers: "_q + _searchQuery + u"|"_q;
-		p.drawText(QRect(10, 10, width() - 50, 26), Qt::AlignVCenter | Qt::AlignLeft, prompt);
+		const auto prompt = _searchQuery.isEmpty()
+			? u"Search Callers (type to filter)..."_q
+			: (u"Search Callers: "_q + _searchQuery + u"|"_q);
+		p.drawText(QRect(12, 6, width() - 110, 26), Qt::AlignVCenter | Qt::AlignLeft, prompt);
 
 		for (const auto &res : _searchResults) {
-			p.fillRect(res.rowRect, QColor(40, 40, 40, 180));
-			p.setPen(QColor(255, 255, 255, 40));
-			p.drawRect(res.rowRect);
+			p.setPen(Qt::NoPen);
+			p.setBrush(QColor(35, 38, 48, 180));
+			p.drawRoundedRect(res.rowRect, 6, 6);
 
-			p.setPen(QColor(255, 255, 255));
-			p.drawText(res.rowRect.adjusted(8, 0, -180, 0), Qt::AlignVCenter | Qt::AlignLeft, res.name);
+			p.setPen(QColor(240, 240, 245));
+			p.setFont(st::semiboldFont);
+			p.drawText(res.rowRect.adjusted(10, 0, -170, 0), Qt::AlignVCenter | Qt::AlignLeft, res.name);
 
-			p.fillRect(res.openChatRect, QColor(50, 80, 120, 220));
-			p.setPen(QColor(200, 230, 255));
+			p.setFont(st::normalFont);
+			p.setBrush(QColor(50, 90, 150, 220));
+			p.drawRoundedRect(res.openChatRect, 4, 4);
+			p.setPen(QColor(210, 235, 255));
 			p.drawText(res.openChatRect, Qt::AlignCenter, u"Chat"_q);
 
-			p.fillRect(res.pinScreenRect, QColor(60, 100, 70, 220));
-			p.setPen(QColor(200, 255, 220));
+			p.setBrush(QColor(45, 115, 75, 220));
+			p.drawRoundedRect(res.pinScreenRect, 4, 4);
+			p.setPen(QColor(210, 255, 230));
 			p.drawText(res.pinScreenRect, Qt::AlignCenter, u"Pin"_q);
 
-			p.fillRect(res.addOverlayRect, QColor(100, 70, 120, 220));
-			p.setPen(QColor(240, 210, 255));
-			p.drawText(res.addOverlayRect, Qt::AlignCenter, u"+Overlay"_q);
+			p.setBrush(QColor(110, 65, 140, 220));
+			p.drawRoundedRect(res.addOverlayRect, 4, 4);
+			p.setPen(QColor(245, 220, 255));
+			p.drawText(res.addOverlayRect, Qt::AlignCenter, u"+Tab"_q);
 		}
 	}
 
@@ -390,36 +706,48 @@ void FloatingOverlay::paintEvent(QPaintEvent *event) {
 
 void FloatingOverlay::resizeEvent(QResizeEvent *event) {
 	QWidget::resizeEvent(event);
-	if (_messagesUi) {
-		_messagesUi->move(4, 35, width() - 8, height() - 44);
+	const auto footerH = 26;
+	if (!_searchOpen && _messagesUi) {
+		_messagesUi->move(4, 39, width() - 8, height() - 39 - footerH);
+	}
+	if (_opacitySlider) {
+		_opacitySlider->setGeometry(10, height() - footerH + 2, 175, 22);
 	}
 	if (_closeBtn) {
-		_closeBtn->move(width() - 30, 5);
+		_closeBtn->move(width() - 34, 5);
 	}
 	if (_passthroughBtn) {
-		_passthroughBtn->move(width() - 55, 5);
+		_passthroughBtn->move(width() - 66, 5);
 	}
 	if (_searchBtn) {
-		_searchBtn->move(width() - 80, 5);
+		_searchBtn->move(width() - 98, 5);
 	}
 }
 
 void FloatingOverlay::setupUI() {
-	_title.create(this, st::callButtonLabel);
-	_title->setText(u"Chat"_q);
-	_title->move(10, 10);
-
-	_closeBtn.create(this, st::callAnswer.button);
-	_closeBtn->move(width() - 30, 5);
+	_closeBtn.create(this, HeaderButton::Type::Close);
+	_closeBtn->move(width() - 34, 5);
+	_closeBtn->setToolTip(u"Close overlay (Esc / Ctrl+Shift+T)"_q);
 	_closeBtn->setClickedCallback([=] { hide(); });
 
-	_passthroughBtn.create(this, st::callAnswer.button);
-	_passthroughBtn->move(width() - 55, 5);
+	_passthroughBtn.create(this, HeaderButton::Type::Passthrough);
+	_passthroughBtn->move(width() - 66, 5);
+	_passthroughBtn->setToolTip(u"Toggle click-through mode"_q);
 	_passthroughBtn->setClickedCallback([=] { togglePassthrough(); });
 
-	_searchBtn.create(this, st::callAnswer.button);
-	_searchBtn->move(width() - 80, 5);
+	_searchBtn.create(this, HeaderButton::Type::Search);
+	_searchBtn->move(width() - 98, 5);
+	_searchBtn->setToolTip(u"Search call participants (Ctrl+F)"_q);
 	_searchBtn->setClickedCallback([=] { toggleSearch(); });
+
+	_opacitySlider.create(this);
+	_opacitySlider->setValue(_opacity);
+	_opacitySlider->setGeometry(10, height() - 24, 175, 22);
+	_opacitySlider->show();
+	_opacitySlider->setChangedCallback([=](float val) {
+		_opacity = val;
+		setWindowOpacity(_opacity);
+	});
 
 	setupChatContent();
 }
@@ -427,12 +755,6 @@ void FloatingOverlay::setupUI() {
 void FloatingOverlay::setupChatContent() {
 	_messagesUi = nullptr;
 	_tabLifetime.destroy();
-
-	if (_tabs.size() > 1 && _title) {
-		_title->hide();
-	} else if (_title) {
-		_title->show();
-	}
 
 	const auto &tab = _tabs[_activeTabIndex];
 	if (!tab.peer) {
@@ -459,12 +781,12 @@ void FloatingOverlay::setupChatContent() {
 					result.push_back({
 						data->id,
 						data->date(),
-						0,  // pinFinishDate
+						0,
 						data->from() ? data->from() : data->history()->peer,
 						data->originalText(),
-						0,  // stars
-						false,  // failed
-						false,  // admin
+						0,
+						false,
+						false,
 						data->out()
 					});
 				}
@@ -496,8 +818,8 @@ void FloatingOverlay::setupChatContent() {
 			[=](QPoint) { return false; });
 	}
 
-	if (_messagesUi) {
-		_messagesUi->move(4, 35, width() - 8, height() - 44);
+	if (!_searchOpen && _messagesUi) {
+		_messagesUi->move(4, 39, width() - 8, height() - 39 - 26);
 	}
 }
 
@@ -522,6 +844,13 @@ void FloatingOverlay::updateGeometry() {
 void FloatingOverlay::togglePassthrough() {
 	_passthrough = !_passthrough;
 	setAttribute(Qt::WA_TransparentForMouseEvents, _passthrough);
+	if (_passthroughBtn) {
+		_passthroughBtn->setActive(_passthrough);
+		_passthroughBtn->setToolTip(_passthrough
+			? u"Click-through enabled"_q
+			: u"Toggle click-through mode"_q);
+	}
+	update();
 }
 
 } // namespace Calls::Group

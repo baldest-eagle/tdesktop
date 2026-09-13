@@ -11,6 +11,8 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "ui/effects/animations.h"
 #include "ui/rp_widget.h"
 
+#include <memory>
+
 class Painter;
 class QOpenGLFunctions;
 class QRhi;
@@ -50,7 +52,7 @@ enum class PanelMode;
 enum class VideoQuality;
 
 struct VideoTileTrack {
-	Webrtc::VideoTrack *track = nullptr;
+	std::shared_ptr<Webrtc::VideoTrack> track;
 	MembersRow *row = nullptr;
 	not_null<PeerData*> peer;
 	rpl::variable<QSize> trackSize;
@@ -61,14 +63,14 @@ struct VideoTileTrack {
 };
 
 [[nodiscard]] inline bool operator==(
-		VideoTileTrack a,
-		VideoTileTrack b) noexcept {
+		const VideoTileTrack &a,
+		const VideoTileTrack &b) noexcept {
 	return (a.track == b.track) && (a.peer == b.peer);
 }
 
 [[nodiscard]] inline bool operator!=(
-		VideoTileTrack a,
-		VideoTileTrack b) noexcept {
+		const VideoTileTrack &a,
+		const VideoTileTrack &b) noexcept {
 	return !(a == b);
 }
 

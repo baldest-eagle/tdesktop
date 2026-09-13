@@ -335,6 +335,7 @@ void Panel::showAndActivate() {
 	if (state & Qt::WindowMinimized) {
 		window()->setWindowState(state & ~Qt::WindowMinimized);
 	}
+	Ui::Platform::RestoreWindow(window());
 	window()->raise();
 	window()->activateWindow();
 	window()->setFocus();
@@ -1160,9 +1161,7 @@ void Panel::setupMembers() {
 	_call->videoStreamActiveUpdates(
 	) | rpl::on_next([=](const VideoStateToggle &update) {
 		if (!update.value) {
-			for (int i = 0; i < _displayCoordinator->displayCount(); ++i) {
-				_displayCoordinator->removeVideoTrack(i, update.endpoint);
-			}
+			_displayCoordinator->removeVideoTrackFromAll(update.endpoint);
 		}
 	}, _callLifetime);
 
@@ -1467,31 +1466,41 @@ void Panel::promptPinTargetScreen(const VideoEndpoint &endpoint) {
 				u"Select target screen for "_q + endpoint.peer->name() + u":"_q,
 				st::groupCallBoxLabel));
 
-		if (isPinnedS0) {
-			box->addButton(rpl::single(u"Unpin from Screen 1 (Stage Window)"_q), [=] {
-				box->closeBox();
+		const auto btn1 = box->addRow(
+			object_ptr<Ui::SettingsButton>(
+				box.get(),
+				rpl::single(isPinnedS0
+					? u"Unpin from Screen 1 (Stage Window)"_q
+					: u"Pin to Screen 1 (Stage Window)"_q),
+				st::defaultSettingsButton));
+		btn1->toggleOn(rpl::single(isPinnedS0), true);
+		btn1->setClickedCallback([=] {
+			box->closeBox();
+			if (isPinnedS0) {
 				unpinFromScreen(0, endpoint);
-			});
-		} else {
-			box->addButton(rpl::single(u"Pin to Screen 1 (Stage Window)"_q), [=] {
-				box->closeBox();
+			} else {
 				pinToScreen(0, endpoint);
-			});
-		}
+			}
+		});
 
-		if (isPinnedS1) {
-			box->addButton(rpl::single(u"Unpin from Screen 2 (2nd Monitor)"_q), [=] {
-				box->closeBox();
+		const auto btn2 = box->addRow(
+			object_ptr<Ui::SettingsButton>(
+				box.get(),
+				rpl::single(isPinnedS1
+					? u"Unpin from Screen 2 (2nd Monitor)"_q
+					: u"Pin to Screen 2 (2nd Monitor)"_q),
+				st::defaultSettingsButton));
+		btn2->toggleOn(rpl::single(isPinnedS1), true);
+		btn2->setClickedCallback([=] {
+			box->closeBox();
+			if (isPinnedS1) {
 				unpinFromScreen(1, endpoint);
-			});
-		} else {
-			box->addButton(rpl::single(u"Pin to Screen 2 (2nd Monitor)"_q), [=] {
-				box->closeBox();
+			} else {
 				pinToScreen(1, endpoint);
-			});
-		}
+			}
+		});
 
-		box->addButton(tr::lng_cancel(), [=] { box->closeBox(); });
+		box->addButton(tr::lng_close(), [=] { box->closeBox(); });
 	});
 	uiShow()->showBox(std::move(box));
 }
@@ -1508,7 +1517,7 @@ void Panel::routeVideoToDisplays() {
 			if (!row) {
 				continue;
 			}
-			for (int i = 0; i < _displayCoordinator->displayCount(); ++i) {
+			for (const auto i : _displayCoordinator->activeScreenIndices()) {
 				if (_displayCoordinator->isPinnedOnScreen(i, endpoint)) {
 					_displayCoordinator->addVideoTrack(
 						i,
@@ -1535,7 +1544,7 @@ void Panel::retryRoutingForPeer(not_null<PeerData*> peer) {
 		if (endpoint.peer != peer) continue;
 		const auto row = _members->lookupRow(GroupCall::TrackPeer(track));
 		if (!row) continue;
-		for (int i = 0; i < _displayCoordinator->displayCount(); ++i) {
+		for (const auto i : _displayCoordinator->activeScreenIndices()) {
 			if (_displayCoordinator->isPinnedOnScreen(i, endpoint)) {
 				_displayCoordinator->addVideoTrack(
 					i,
@@ -1907,6 +1916,13 @@ void Panel::showMainMenu() {
 		[=] { chooseJoinAs(); },
 		[=] { chooseShareScreenSource(); },
 		[=](auto box) { uiShow()->showBox(std::move(box)); });
+	if (_floatingOverlay) {
+		_menu->addAction(u"Toggle Call Overlay (Ctrl+Shift+T)"_q, [=] {
+			if (_floatingOverlay) {
+				_floatingOverlay->toggle();
+			}
+		});
+	}
 	if (_menu->empty()) {
 		_wideMenuShown = false;
 		_menu.destroy();
@@ -2942,28 +2958,38 @@ bool Panel::videoButtonInNarrowMode() const {
 	return (_video != nullptr) && !_call->mutedByAdmin();
 }
 
+void Panel::overlayVisibilityChanged() {
+	updateMembersGeometry();
+}
+
 void Panel::updateMembersGeometry() {
 	if (!_members) {
 		return;
 	}
-	_members->setVisible(!_call->rtmp());
+	const auto overlayActive = _floatingOverlay && _floatingOverlay->isVisible();
+	const auto isWide = (mode() == PanelMode::Wide || mode() == PanelMode::Grid);
+	const auto hideMembers = _call->rtmp() || (overlayActive && isWide);
+	_members->setVisible(!hideMembers);
 	const auto desiredHeight = _members->desiredHeight();
-	if (mode() == PanelMode::Wide) {
+	if (isWide) {
 		const auto skip = _rtmpFull ? 0 : st::groupCallNarrowSkip;
 		const auto membersWidth = st::groupCallNarrowMembersWidth;
 		const auto top = _rtmpFull ? 0 : st::groupCallWideVideoTop;
-		_members->setGeometry(
-			widget()->width() - skip - membersWidth,
-			top,
-			membersWidth,
-			std::min(desiredHeight, widget()->height() - top - skip));
-		const auto viewportSkip = _call->rtmp()
+		if (!hideMembers) {
+			_members->setGeometry(
+				widget()->width() - skip - membersWidth,
+				top,
+				membersWidth,
+				std::min(desiredHeight, widget()->height() - top - skip));
+		}
+		const auto viewportSkip = hideMembers
 			? 0
 			: (skip + membersWidth);
+		const auto rightSkip = hideMembers ? skip : (2 * skip);
 		_viewport->setGeometry(_rtmpFull, {
 			skip,
 			top,
-			widget()->width() - viewportSkip - 2 * skip,
+			widget()->width() - viewportSkip - rightSkip,
 			widget()->height() - top - skip,
 		});
 	} else {

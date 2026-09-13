@@ -466,11 +466,15 @@ void Viewport::RendererGL::paintTile(
 	validateUserpicFrame(tile, tileData);
 	const auto frameSize = _userpicFrame
 		? tileData.userpicFrame.size()
-		: data.yuv420->size;
+		: data.yuv420
+		? data.yuv420->size
+		: data.original.size();
+	if (frameSize.isEmpty()) {
+		return;
+	}
 	const auto frameRotation = _userpicFrame
 		? 0
 		: data.rotation;
-	Assert(!frameSize.isEmpty());
 
 	_rgbaFrame = (data.format == Webrtc::FrameFormat::ARGB32)
 		|| _userpicFrame;

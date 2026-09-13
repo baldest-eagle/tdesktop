@@ -106,6 +106,7 @@ public:
 	[[nodiscard]] FloatingOverlay *floatingOverlay() const {
 		return _floatingOverlay.get();
 	}
+	void overlayVisibilityChanged();
 
 	[[nodiscard]] DisplayCoordinator *displayCoordinator() const {
 		return _displayCoordinator.get();

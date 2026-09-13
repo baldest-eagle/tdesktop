@@ -21,6 +21,8 @@ namespace Calls::Group {
 
 class Panel;
 class MessagesUi;
+class HeaderButton;
+class OpacitySlider;
 
 class FloatingOverlay final : public QWidget {
 public:
@@ -45,6 +47,7 @@ protected:
 	void wheelEvent(QWheelEvent *event) override;
 	void paintEvent(QPaintEvent *event) override;
 	void resizeEvent(QResizeEvent *event) override;
+	void closeEvent(QCloseEvent *event) override;
 
 private:
 	struct OverlayTab {
@@ -80,14 +83,14 @@ private:
 	QRect _startGeometry;
 	bool _passthrough = false;
 
-	float _opacity = 0.7f;
+	float _opacity = 0.92f;
 
 	QShortcut *_toggleShortcut = nullptr;
 
-	object_ptr<Ui::FlatLabel> _title = { nullptr };
-	object_ptr<Ui::IconButton> _closeBtn = { nullptr };
-	object_ptr<Ui::IconButton> _passthroughBtn = { nullptr };
-	object_ptr<Ui::IconButton> _searchBtn = { nullptr };
+	object_ptr<HeaderButton> _closeBtn = { nullptr };
+	object_ptr<HeaderButton> _passthroughBtn = { nullptr };
+	object_ptr<HeaderButton> _searchBtn = { nullptr };
+	object_ptr<OpacitySlider> _opacitySlider = { nullptr };
 
 	std::unique_ptr<MessagesUi> _messagesUi;
 

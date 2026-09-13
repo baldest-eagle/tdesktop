@@ -90,10 +90,12 @@ public:
 	void updateAudioLevels(const std::vector<std::pair<PeerData*, double>> &levels);
 
 	[[nodiscard]] int displayCount() const;
+	[[nodiscard]] std::vector<int> activeScreenIndices() const;
 	[[nodiscard]] rpl::producer<int> displayCountChanged() const;
 	[[nodiscard]] rpl::producer<VideoEndpoint> qualityRequests() const;
 
 	bool hasTrack(int displayIndex, const VideoEndpoint &endpoint) const;
+	void removeVideoTrackFromAll(const VideoEndpoint &endpoint);
 
 private:
 	void createDisplayWindow(int displayIndex, QScreen *screen);

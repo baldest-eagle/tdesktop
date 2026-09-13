@@ -230,7 +230,7 @@ struct GroupCall::SinkPointer {
 struct GroupCall::VideoTrack {
 	VideoTrack(bool paused, bool requireARGB32, not_null<PeerData*> peer);
 
-	Webrtc::VideoTrack track;
+	std::shared_ptr<Webrtc::VideoTrack> track;
 	rpl::variable<QSize> trackSize;
 	not_null<PeerData*> peer;
 	rpl::lifetime lifetime;
@@ -242,10 +242,11 @@ GroupCall::VideoTrack::VideoTrack(
 	bool paused,
 	bool requireARGB32,
 	not_null<PeerData*> peer)
-: track((paused
-	? Webrtc::VideoState::Paused
-	: Webrtc::VideoState::Active),
-	requireARGB32)
+: track(std::make_shared<Webrtc::VideoTrack>(
+	(paused
+		? Webrtc::VideoState::Paused
+		: Webrtc::VideoState::Active),
+	requireARGB32))
 , peer(peer) {
 }
 
@@ -560,9 +561,9 @@ not_null<PeerData*> GroupCall::TrackPeer(
 	return track->peer;
 }
 
-not_null<Webrtc::VideoTrack*> GroupCall::TrackPointer(
+std::shared_ptr<Webrtc::VideoTrack> GroupCall::TrackPointer(
 		const std::unique_ptr<VideoTrack> &track) {
-	return &track->track;
+	return track->track;
 }
 
 rpl::producer<QSize> GroupCall::TrackSizeValue(
@@ -1469,7 +1470,7 @@ void GroupCall::markEndpointActive(
 				paused,
 				_requireARGB32,
 				endpoint.peer)).first;
-		const auto track = &i->second->track;
+		const auto track = i->second->track.get();
 
 		track->renderNextFrame(
 		) | rpl::on_next([=] {
@@ -1506,11 +1507,12 @@ void GroupCall::markEndpointActive(
 		}
 		markTrackShown(endpoint, false);
 		markTrackPaused(endpoint, false);
+		_videoStreamActiveUpdates.fire({ endpoint, active });
 		_activeVideoTracks.erase(i);
 	}
 	updateRequestedVideoChannelsDelayed();
-	_videoStreamActiveUpdates.fire({ endpoint, active });
 	if (active) {
+		_videoStreamActiveUpdates.fire({ endpoint, active });
 		markTrackShown(endpoint, shown);
 		markTrackPaused(endpoint, paused);
 	}
@@ -1541,7 +1543,7 @@ void GroupCall::markTrackPaused(const VideoEndpoint &endpoint, bool paused) {
 	const auto i = _activeVideoTracks.find(endpoint);
 	Assert(i != end(_activeVideoTracks));
 
-	i->second->track.setState(paused
+	i->second->track->setState(paused
 		? Webrtc::VideoState::Paused
 		: Webrtc::VideoState::Active);
 }

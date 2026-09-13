@@ -120,6 +120,7 @@ private:
 
 	[[nodiscard]] bool isMe(not_null<PeerData*> participantPeer) const;
 	void prepareRows(not_null<Data::GroupCall*> real);
+	void sortRowsAlphabetically();
 
 	[[nodiscard]] base::unique_qptr<Ui::PopupMenu> createRowContextMenu(
 		QWidget *parent,
@@ -201,6 +202,7 @@ private:
 
 	base::flat_map<PeerListRowId, crl::time> _raisedHandStatusRemoveAt;
 	base::Timer _raisedHandStatusRemoveTimer;
+	base::Timer _sortTimer;
 
 	base::flat_map<uint32, not_null<Row*>> _soundingRowBySsrc;
 	base::flat_set<not_null<PeerData*>> _cameraActive;
@@ -234,6 +236,7 @@ Members::Controller::Controller(
 , _peer(call->peer())
 , _menuParent(menuParent)
 , _raisedHandStatusRemoveTimer([=] { scheduleRaisedHandStatusRemove(); })
+, _sortTimer([=] { sortRowsAlphabetically(); })
 , _mode(mode)
 , _inactiveCrossLine(st::groupCallMemberInactiveCrossLine)
 , _coloredCrossLine(st::groupCallMemberColoredCrossLine)
@@ -602,6 +605,24 @@ void Members::Controller::setupWithAccessUsers() {
 	}, _lifetime);
 }
 
+void Members::Controller::sortRowsAlphabetically() {
+	delegate()->peerListSortRows([&](
+			const PeerListRow &a,
+			const PeerListRow &b) {
+		using State = Row::State;
+		const auto stateA = static_cast<const Row&>(a).state();
+		const auto stateB = static_cast<const Row&>(b).state();
+		const auto groupA = (stateA == State::Invited || stateA == State::Calling) ? 1 : 0;
+		const auto groupB = (stateB == State::Invited || stateB == State::Calling) ? 1 : 0;
+		if (groupA != groupB) {
+			return groupA < groupB;
+		}
+		const auto &nameA = a.special() ? QString() : a.peer()->name();
+		const auto &nameB = b.special() ? QString() : b.peer()->name();
+		return QString::compare(nameA, nameB, Qt::CaseInsensitive) < 0;
+	});
+}
+
 void Members::Controller::updateRow(
 		const std::optional<Data::GroupCallParticipant> &was,
 		const Data::GroupCallParticipant &now) {
@@ -634,19 +655,9 @@ void Members::Controller::updateRow(
 		}
 		delegate()->peerListRefreshRows();
 	}
-	// Always keep user list along the side sorted alphabetically
-	delegate()->peerListSortRows([&](
-			const PeerListRow &a,
-			const PeerListRow &b) {
-		using State = Row::State;
-		const auto stateA = static_cast<const Row&>(a).state();
-		const auto stateB = static_cast<const Row&>(b).state();
-		const auto groupA = (stateA == State::Invited || stateA == State::Calling) ? 1 : 0;
-		const auto groupB = (stateB == State::Invited || stateB == State::Calling) ? 1 : 0;
-		const auto nameA = a.special() ? QString() : a.peer()->name();
-		const auto nameB = b.special() ? QString() : b.peer()->name();
-		return QString::compare(nameA, nameB, Qt::CaseInsensitive) < 0;
-	});
+	if (!_sortTimer.isActive()) {
+		_sortTimer.callOnce(100);
+	}
 	const auto reorder = [&] {
 		const auto count = reorderIfNonRealBefore;
 		if (count <= 0) {
@@ -1045,6 +1056,7 @@ void Members::Controller::prepareRows(not_null<Data::GroupCall*> real) {
 	}
 	if (changed) {
 		delegate()->peerListRefreshRows();
+		sortRowsAlphabetically();
 	}
 }
 

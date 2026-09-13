@@ -8,6 +8,7 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "calls/group/calls_group_display_coordinator.h"
 
 #include "calls/group/calls_group_viewport.h"
+#include "ui/platform/ui_platform_utility.h"
 #include "ui/widgets/labels.h"
 
 #include <QtGui/QGuiApplication>
@@ -102,11 +103,12 @@ void DisplayCoordinator::createDisplayWindow(int displayIndex, QScreen *screen) 
 
 	display.widget = base::make_unique_q<QWidget>(
 		nullptr,
-		Qt::Tool | Qt::FramelessWindowHint);
+		Qt::Window | Qt::FramelessWindowHint);
 	if (!display.widget) {
 		_displays.erase(displayIndex);
 		return;
 	}
+	Ui::Platform::EnsureAppWindow(display.widget.get());
 
 	display.widget->setWindowTitle(RoleText(display.role));
 	display.widget->setAttribute(Qt::WA_OpaquePaintEvent);
@@ -169,10 +171,17 @@ void DisplayCoordinator::setupWindowGeometry(DisplayWindow &display) {
 		return;
 	}
 
-	const auto geo = screen->availableGeometry();
-	display.widget->setGeometry(geo);
-
-	display.viewport->setGeometry(false, QRect(0, 0, geo.width(), geo.height()));
+	auto geo = screen->availableGeometry();
+	if (geo.isEmpty()) {
+		const auto primary = QGuiApplication::primaryScreen();
+		if (primary) {
+			geo = primary->availableGeometry();
+		}
+	}
+	if (!geo.isEmpty()) {
+		display.widget->setGeometry(geo);
+		display.viewport->setGeometry(false, QRect(0, 0, geo.width(), geo.height()));
+	}
 }
 
 void DisplayCoordinator::setRole(int displayIndex, DisplayRole role) {
@@ -329,6 +338,26 @@ void DisplayCoordinator::updateAudioLevels(const std::vector<std::pair<PeerData*
 
 int DisplayCoordinator::displayCount() const {
 	return static_cast<int>(_displays.size());
+}
+
+std::vector<int> DisplayCoordinator::activeScreenIndices() const {
+	auto result = std::vector<int>();
+	result.reserve(_displays.size());
+	for (const auto &[index, _] : _displays) {
+		result.push_back(index);
+	}
+	return result;
+}
+
+void DisplayCoordinator::removeVideoTrackFromAll(const VideoEndpoint &endpoint) {
+	for (auto &[displayIndex, display] : _displays) {
+		if (display.viewport) {
+			display.viewport->remove(endpoint);
+		}
+	}
+	for (auto &[screenIndex, endpoints] : _routedEndpoints) {
+		endpoints.erase(endpoint);
+	}
 }
 
 rpl::producer<int> DisplayCoordinator::displayCountChanged() const {
