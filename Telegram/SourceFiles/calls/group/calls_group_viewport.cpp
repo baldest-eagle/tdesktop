@@ -133,6 +133,18 @@ void Viewport::setup() {
 				static_cast<QMouseEvent*>(e.get())->button());
 		} else if (type == QEvent::MouseMove) {
 			handleMouseMove(static_cast<QMouseEvent*>(e.get())->pos());
+		} else if (type == QEvent::Wheel) {
+			if (_gridPageCount.current() > 1) {
+				const auto wheel = static_cast<QWheelEvent*>(e.get());
+				const auto deltaY = wheel->angleDelta().y();
+				const auto deltaX = wheel->angleDelta().x();
+				const auto delta = (std::abs(deltaX) > std::abs(deltaY)) ? deltaX : deltaY;
+				if (delta < 0 && _gridPage.current() + 1 < _gridPageCount.current()) {
+					setGridPage(_gridPage.current() + 1);
+				} else if (delta > 0 && _gridPage.current() > 0) {
+					setGridPage(_gridPage.current() - 1);
+				}
+			}
 		}
 	}, lifetime());
 }
@@ -316,6 +328,7 @@ void Viewport::add(
 	) | rpl::on_next([=] {
 		updateTilesGeometry();
 	}, _tiles.back()->lifetime());
+	_tilesCountChanges.fire(static_cast<int>(_tiles.size()));
 }
 
 void Viewport::remove(const VideoEndpoint &endpoint) {
@@ -356,6 +369,7 @@ void Viewport::remove(const VideoEndpoint &endpoint) {
 	} else {
 		updateTilesGeometry();
 	}
+	_tilesCountChanges.fire(static_cast<int>(_tiles.size()));
 }
 
 void Viewport::prepareLargeChangeAnimation() {
@@ -515,6 +529,7 @@ Viewport::Layout Viewport::countWide(int outerWidth, int outerHeight) const {
 	auto &sizes = result.list;
 	sizes.reserve(_tiles.size());
 
+	std::vector<not_null<VideoTile*>> inactiveTiles;
 	if (!_pinnedEndpoints.empty()) {
 		for (const auto &pinned : _pinnedEndpoints) {
 			for (const auto &tile : _tiles) {
@@ -528,6 +543,8 @@ Viewport::Layout Viewport::countWide(int outerWidth, int outerHeight) const {
 				}
 			}
 		}
+		const_cast<Viewport*>(this)->_gridPageCount = 1;
+		const_cast<Viewport*>(this)->_gridPage = 0;
 	} else {
 		auto unpinnedTiles = std::vector<not_null<VideoTile*>>();
 		for (const auto &tile : _tiles) {
@@ -540,14 +557,50 @@ Viewport::Layout Viewport::countWide(int outerWidth, int outerHeight) const {
 		std::sort(unpinnedTiles.begin(), unpinnedTiles.end(), [](not_null<VideoTile*> a, not_null<VideoTile*> b) {
 			return a->entryTime() < b->entryTime();
 		});
-		for (const auto video : unpinnedTiles) {
+
+		const auto totalCount = int(unpinnedTiles.size());
+		const auto pageCount = std::max(1, (totalCount + kMainGridPageSize - 1) / kMainGridPageSize);
+		if (_gridPageCount.current() != pageCount) {
+			const_cast<Viewport*>(this)->_gridPageCount = pageCount;
+		}
+		const auto currentPage = std::clamp(_gridPage.current(), 0, pageCount - 1);
+		if (_gridPage.current() != currentPage) {
+			const_cast<Viewport*>(this)->_gridPage = currentPage;
+		}
+
+		const auto startIndex = currentPage * kMainGridPageSize;
+		const auto endIndex = std::min(totalCount, startIndex + kMainGridPageSize);
+
+		for (auto i = startIndex; i < endIndex; ++i) {
+			const auto video = unpinnedTiles[i];
 			sizes.push_back(Geometry{ video.get(), video->trackOrUserpicSize() });
 		}
+		for (auto i = 0; i < startIndex; ++i) {
+			inactiveTiles.push_back(unpinnedTiles[i]);
+		}
+		for (auto i = endIndex; i < totalCount; ++i) {
+			inactiveTiles.push_back(unpinnedTiles[i]);
+		}
 	}
+
+	const auto appendInactive = [&] {
+		for (const auto video : inactiveTiles) {
+			result.list.push_back(Geometry{
+				.tile = video.get(),
+				.size = video->trackOrUserpicSize(),
+				.rows = QRect(),
+				.columns = QRect(),
+			});
+		}
+	};
+
 	if (sizes.empty()) {
+		appendInactive();
 		return result;
 	} else if (sizes.size() == 1) {
 		sizes.front().rows = { 0, 0, outerWidth, outerHeight };
+		sizes.front().columns = { 0, 0, outerWidth, outerHeight };
+		appendInactive();
 		return result;
 	}
 
@@ -567,7 +620,72 @@ Viewport::Layout Viewport::countWide(int outerWidth, int outerHeight) const {
 			outerHeight,
 		};
 		result.useColumns = true;
+		appendInactive();
 		return result;
+	}
+
+	if (_pinnedEndpoints.empty()) {
+		if (count == 3) {
+			const auto cellW = (outerWidth - 2 * skip) / 3.0;
+			for (auto i = 0; i < 3; ++i) {
+				const auto left = int(base::SafeRound(i * (cellW + skip)));
+				const auto right = int(base::SafeRound((i + 1) * cellW + i * skip));
+				sizes[i].columns = sizes[i].rows = { left, 0, right - left, outerHeight };
+			}
+			result.useColumns = true;
+			appendInactive();
+			return result;
+		} else if (count == 4) {
+			const auto cellW = (outerWidth - skip) / 2.0;
+			const auto cellH = (outerHeight - skip) / 2.0;
+			for (auto i = 0; i < 4; ++i) {
+				const auto c = i % 2;
+				const auto r = i / 2;
+				const auto left = int(base::SafeRound(c * (cellW + skip)));
+				const auto top = int(base::SafeRound(r * (cellH + skip)));
+				const auto right = int(base::SafeRound((c + 1) * cellW + c * skip));
+				const auto bottom = int(base::SafeRound((r + 1) * cellH + r * skip));
+				sizes[i].columns = sizes[i].rows = { left, top, right - left, bottom - top };
+			}
+			result.useColumns = true;
+			appendInactive();
+			return result;
+		} else if (count == 5) {
+			const auto cellW = (outerWidth - 2 * skip) / 3.0;
+			const auto cellH = (outerHeight - skip) / 2.0;
+			for (auto i = 0; i < 3; ++i) {
+				const auto left = int(base::SafeRound(i * (cellW + skip)));
+				const auto right = int(base::SafeRound((i + 1) * cellW + i * skip));
+				const auto bottom = int(base::SafeRound(cellH));
+				sizes[i].columns = sizes[i].rows = { left, 0, right - left, bottom };
+			}
+			const auto offsetX = int(base::SafeRound((outerWidth - (2 * cellW + skip)) / 2.0));
+			const auto top = int(base::SafeRound(cellH + skip));
+			const auto h = outerHeight - top;
+			for (auto i = 0; i < 2; ++i) {
+				const auto left = offsetX + int(base::SafeRound(i * (cellW + skip)));
+				const auto right = offsetX + int(base::SafeRound((i + 1) * cellW + i * skip));
+				sizes[3 + i].columns = sizes[3 + i].rows = { left, top, right - left, h };
+			}
+			result.useColumns = true;
+			appendInactive();
+			return result;
+		} else if (count == 6) {
+			const auto cellW = (outerWidth - 2 * skip) / 3.0;
+			const auto cellH = (outerHeight - skip) / 2.0;
+			for (auto i = 0; i < 6; ++i) {
+				const auto c = i % 3;
+				const auto r = i / 3;
+				const auto left = int(base::SafeRound(c * (cellW + skip)));
+				const auto top = int(base::SafeRound(r * (cellH + skip)));
+				const auto right = int(base::SafeRound((c + 1) * cellW + c * skip));
+				const auto bottom = int(base::SafeRound((r + 1) * cellH + r * skip));
+				sizes[i].columns = sizes[i].rows = { left, top, right - left, bottom - top };
+			}
+			result.useColumns = true;
+			appendInactive();
+			return result;
+		}
 	}
 
 	const auto fixedGridDim = (slotConstraint == 1)
@@ -603,6 +721,7 @@ Viewport::Layout Viewport::countWide(int outerWidth, int outerHeight) const {
 			}
 		}
 		result.useColumns = true;
+		appendInactive();
 		return result;
 	}
 
@@ -672,6 +791,14 @@ Viewport::Layout Viewport::countWide(int outerWidth, int outerHeight) const {
 		}
 	}
 	result.useColumns = (columnsBlack < rowsBlack);
+	for (const auto video : inactiveTiles) {
+		result.list.push_back(Geometry{
+			.tile = video.get(),
+			.size = video->trackOrUserpicSize(),
+			.rows = QRect(),
+			.columns = QRect(),
+		});
+	}
 	return result;
 }
 
@@ -1042,6 +1169,30 @@ void Viewport::setSlotCount(int count) {
 	updateTilesGeometry();
 }
 
+void Viewport::setGridPage(int page) {
+	const auto clamped = std::clamp(page, 0, _gridPageCount.current() - 1);
+	if (_gridPage.current() != clamped) {
+		_gridPage = clamped;
+		updateTilesGeometry();
+	}
+}
+
+int Viewport::gridPage() const {
+	return _gridPage.current();
+}
+
+int Viewport::gridPageCount() const {
+	return _gridPageCount.current();
+}
+
+rpl::producer<int> Viewport::gridPageValue() const {
+	return _gridPage.value();
+}
+
+rpl::producer<int> Viewport::gridPageCountValue() const {
+	return _gridPageCount.value();
+}
+
 void Viewport::togglePin(const VideoEndpoint &endpoint, bool pinned) {
 	const auto i = std::find(_pinnedEndpoints.begin(), _pinnedEndpoints.end(), endpoint);
 	if (pinned && i == _pinnedEndpoints.end()) {
@@ -1061,6 +1212,14 @@ bool Viewport::isPinned(const VideoEndpoint &endpoint) const {
 
 const std::vector<VideoEndpoint> &Viewport::pinnedEndpoints() const {
 	return _pinnedEndpoints;
+}
+
+int Viewport::tilesCount() const {
+	return static_cast<int>(_tiles.size());
+}
+
+rpl::producer<int> Viewport::tilesCountChanges() const {
+	return _tilesCountChanges.events();
 }
 
 rpl::variable<bool> Viewport::gridModeValue() const {

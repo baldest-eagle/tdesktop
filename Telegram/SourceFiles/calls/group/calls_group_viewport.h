@@ -95,9 +95,16 @@ public:
 	void setScrollTop(int scrollTop);
 	void setGridMode(bool grid);
 	void setSlotCount(int count);
+	void setGridPage(int page);
+	[[nodiscard]] int gridPage() const;
+	[[nodiscard]] int gridPageCount() const;
+	[[nodiscard]] rpl::producer<int> gridPageValue() const;
+	[[nodiscard]] rpl::producer<int> gridPageCountValue() const;
 	void togglePin(const VideoEndpoint &endpoint, bool pinned);
 	[[nodiscard]] bool isPinned(const VideoEndpoint &endpoint) const;
 	[[nodiscard]] const std::vector<VideoEndpoint> &pinnedEndpoints() const;
+	[[nodiscard]] int tilesCount() const;
+	[[nodiscard]] rpl::producer<int> tilesCountChanges() const;
 
 	void add(
 		const VideoEndpoint &endpoint,
@@ -244,9 +251,13 @@ private:
 	Selection _selected;
 	Selection _pressed;
 	rpl::variable<bool> _mouseInside = false;
+	rpl::event_stream<int> _tilesCountChanges;
 
 	rpl::variable<bool> _gridMode = false;
 	rpl::variable<int> _slotCount = 0;
+	rpl::variable<int> _gridPage = 0;
+	rpl::variable<int> _gridPageCount = 1;
+	static constexpr auto kMainGridPageSize = 6;
 	std::vector<VideoEndpoint> _pinnedEndpoints;
 	std::map<VideoEndpoint, int> _pinnedSlots;
 

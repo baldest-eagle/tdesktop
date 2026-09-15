@@ -74,6 +74,9 @@ public:
 	void unpinFromScreen(int screenIndex, const VideoEndpoint &endpoint);
 	[[nodiscard]] bool isPinnedOnScreen(int screenIndex, const VideoEndpoint &endpoint) const;
 	[[nodiscard]] int pinnedCount(int screenIndex) const;
+	[[nodiscard]] std::vector<VideoEndpoint> pinnedEndpoints(int screenIndex) const;
+	[[nodiscard]] bool hasPinnedFeeds(int screenIndex) const;
+	void checkAndCleanupEmptyScreens();
 	void ensureStageWindow(int screenIndex);
 
 	void addVideoTrack(

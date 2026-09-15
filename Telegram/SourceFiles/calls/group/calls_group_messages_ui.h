@@ -64,6 +64,7 @@ public:
 
 	void move(int left, int bottom, int width, int availableHeight);
 	void raise();
+	void setVisible(bool visible);
 
 	[[nodiscard]] rpl::producer<> hiddenShowRequested() const;
 	[[nodiscard]] rpl::producer<MessageDeleteRequest> deleteRequests() const;

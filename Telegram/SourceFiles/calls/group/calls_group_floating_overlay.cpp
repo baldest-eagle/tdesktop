@@ -392,13 +392,13 @@ void FloatingOverlay::toggleSearch() {
 	if (_searchBtn) {
 		_searchBtn->setActive(_searchOpen);
 	}
-	if (_searchOpen) {
-		if (_messagesUi) {
-			_messagesUi->move(-10000, -10000, 0, 0);
-		}
-	} else {
-		if (_messagesUi) {
-			_messagesUi->move(4, 39, width() - 8, height() - 39 - 23);
+	if (_messagesUi) {
+		_messagesUi->setVisible(!_searchOpen);
+		if (!_searchOpen) {
+			const auto footerH = 26;
+			const auto bottom = height() - footerH;
+			const auto h = bottom - 39;
+			_messagesUi->move(4, bottom, width() - 8, h);
 		}
 	}
 	updateSearchResults();
@@ -498,8 +498,9 @@ void FloatingOverlay::mousePressEvent(QMouseEvent *event) {
 					event->accept();
 					return;
 				} else if (res.addOverlayRect.contains(pos)) {
-					addChat(res.peer);
+					const auto peer = res.peer;
 					toggleSearch();
+					addChat(peer);
 					event->accept();
 					return;
 				}
@@ -708,7 +709,9 @@ void FloatingOverlay::resizeEvent(QResizeEvent *event) {
 	QWidget::resizeEvent(event);
 	const auto footerH = 26;
 	if (!_searchOpen && _messagesUi) {
-		_messagesUi->move(4, 39, width() - 8, height() - 39 - footerH);
+		const auto bottom = height() - footerH;
+		const auto h = bottom - 39;
+		_messagesUi->move(4, bottom, width() - 8, h);
 	}
 	if (_opacitySlider) {
 		_opacitySlider->setGeometry(10, height() - footerH + 2, 175, 22);
@@ -770,19 +773,30 @@ void FloatingOverlay::setupChatContent() {
 			call->messagesEnabledValue(),
 			[=](QPoint) { return false; });
 	} else {
-		const auto peer = tab.peer;
+		const auto peer = not_null{ tab.peer };
 		auto getMessages = [=] {
 			std::vector<Message> result;
-			const auto history = peer->owner().history(peer);
+			const auto history = peer->owner().historyLoaded(peer)
+				? peer->owner().history(peer).get()
+				: nullptr;
+			if (!history) {
+				return result;
+			}
 			for (const auto &block : history->blocks) {
 				for (const auto &item : block->messages) {
 					const auto data = item->data();
-					if (!data) continue;
+					if (!data || data->emptyText()) continue;
+					auto from = peer;
+					if (const auto fromPeer = data->from()) {
+						from = fromPeer;
+					} else if (const auto h = data->history()) {
+						from = h->peer;
+					}
 					result.push_back({
 						data->id,
 						data->date(),
 						0,
-						data->from() ? data->from() : data->history()->peer,
+						from,
 						data->originalText(),
 						0,
 						false,
@@ -797,12 +811,12 @@ void FloatingOverlay::setupChatContent() {
 			return result;
 		};
 
-		auto messagesVar = std::make_shared<rpl::variable<std::vector<Message>>>(getMessages());
+		auto messagesStream = std::make_shared<rpl::event_stream<std::vector<Message>>>();
 
 		peer->session().data().newItemAdded(
 		) | rpl::on_next([=](not_null<HistoryItem*> item) {
 			if (item->history()->peer == peer) {
-				messagesVar->reset(getMessages());
+				messagesStream->fire(getMessages());
 			}
 		}, _tabLifetime);
 
@@ -810,7 +824,7 @@ void FloatingOverlay::setupChatContent() {
 			this,
 			_panel->uiShow(),
 			MessagesMode::GroupCall,
-			messagesVar->value(),
+			messagesStream->events_starting_with(getMessages()),
 			nullptr,
 			rpl::never<MessageIdUpdate>(),
 			rpl::single(false),
@@ -818,8 +832,12 @@ void FloatingOverlay::setupChatContent() {
 			[=](QPoint) { return false; });
 	}
 
-	if (!_searchOpen && _messagesUi) {
-		_messagesUi->move(4, 39, width() - 8, height() - 39 - 26);
+	if (_messagesUi) {
+		const auto footerH = 26;
+		const auto bottom = height() - footerH;
+		const auto h = bottom - 39;
+		_messagesUi->move(4, bottom, width() - 8, h);
+		_messagesUi->setVisible(!_searchOpen);
 	}
 }
 

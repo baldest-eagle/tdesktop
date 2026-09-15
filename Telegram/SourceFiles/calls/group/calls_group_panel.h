@@ -75,6 +75,7 @@ enum class StickedTooltip;
 class MicLevelTester;
 class MessageField;
 class MessagesUi;
+class GridPagination;
 
 class Panel final
 	: public base::has_weak_ptr
@@ -177,6 +178,7 @@ private:
 	void refreshTitleBackground();
 	void setupControlsBackgroundWide();
 	void setupControlsBackgroundNarrow();
+	void setupGridPagination();
 	void showControls();
 	void createMessageButton();
 	void refreshLeftButton();
@@ -248,6 +250,7 @@ private:
 	object_ptr<Ui::AbstractButton> _joinAsToggle = { nullptr };
 	object_ptr<Members> _members = { nullptr };
 	std::unique_ptr<Viewport> _viewport;
+	object_ptr<GridPagination> _gridPagination = { nullptr };
 	rpl::lifetime _trackControlsOverStateLifetime;
 	rpl::lifetime _trackControlsMenuLifetime;
 	object_ptr<Ui::FlatLabel> _startsIn = { nullptr };

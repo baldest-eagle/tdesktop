@@ -76,6 +76,7 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include <QtWidgets/QApplication>
 #include <QtGui/QWindow>
 #include <QtGui/QScreen>
+#include <QtGui/QMouseEvent>
 
 namespace Calls::Group {
 namespace {
@@ -196,6 +197,255 @@ private:
 };
 
 } // namespace
+
+class GridPagination final : public Ui::RpWidget {
+public:
+	explicit GridPagination(QWidget *parent);
+
+	void setPageCount(int count);
+	void setCurrentPage(int page);
+	[[nodiscard]] rpl::producer<int> pageSelectRequests() const;
+
+protected:
+	void paintEvent(QPaintEvent *e) override;
+	void mousePressEvent(QMouseEvent *e) override;
+	void mouseMoveEvent(QMouseEvent *e) override;
+	void leaveEventHook(QEvent *e) override;
+
+private:
+	void recalculateLayout();
+	[[nodiscard]] QRect prevButtonRect() const;
+	[[nodiscard]] QRect nextButtonRect() const;
+	[[nodiscard]] QRect dotHitRect(int index) const;
+
+	int _pageCount = 1;
+	int _currentPage = 0;
+
+	int _hoveredDot = -1;
+	bool _hoveredPrev = false;
+	bool _hoveredNext = false;
+
+	int _textWidth = 0;
+	int _dotsStartX = 0;
+	int _dotsWidth = 0;
+	int _totalWidth = 0;
+	static constexpr auto kHeight = 32;
+
+	rpl::event_stream<int> _pageSelectRequests;
+};
+
+GridPagination::GridPagination(QWidget *parent)
+: RpWidget(parent) {
+	setAttribute(Qt::WA_OpaquePaintEvent, false);
+	setMouseTracking(true);
+	recalculateLayout();
+}
+
+void GridPagination::setPageCount(int count) {
+	count = std::max(1, count);
+	if (_pageCount != count) {
+		_pageCount = count;
+		_currentPage = std::clamp(_currentPage, 0, _pageCount - 1);
+		recalculateLayout();
+		update();
+	}
+}
+
+void GridPagination::setCurrentPage(int page) {
+	page = std::clamp(page, 0, _pageCount - 1);
+	if (_currentPage != page) {
+		_currentPage = page;
+		recalculateLayout();
+		update();
+	}
+}
+
+rpl::producer<int> GridPagination::pageSelectRequests() const {
+	return _pageSelectRequests.events();
+}
+
+void GridPagination::recalculateLayout() {
+	const auto text = QString::number(_currentPage + 1)
+		+ u" / "_q
+		+ QString::number(_pageCount);
+	_textWidth = st::semiboldFont->width(text);
+
+	if (_pageCount <= 8) {
+		_dotsWidth = (_pageCount - 1) * 11 + 14;
+		_dotsStartX = 4 + 28 + 6 + _textWidth + 8;
+		_totalWidth = _dotsStartX + _dotsWidth + 6 + 28 + 4;
+	} else {
+		_dotsWidth = 0;
+		_dotsStartX = 0;
+		_totalWidth = 4 + 28 + 8 + _textWidth + 8 + 28 + 4;
+	}
+	resize(_totalWidth, kHeight);
+}
+
+QRect GridPagination::prevButtonRect() const {
+	return QRect(4, 2, 28, 28);
+}
+
+QRect GridPagination::nextButtonRect() const {
+	return QRect(_totalWidth - 32, 2, 28, 28);
+}
+
+QRect GridPagination::dotHitRect(int index) const {
+	if (_pageCount > 8 || index < 0 || index >= _pageCount) {
+		return QRect();
+	}
+	auto x = _dotsStartX;
+	for (auto i = 0; i < index; ++i) {
+		x += (i == _currentPage ? 14 : 6) + 5;
+	}
+	const auto w = (index == _currentPage ? 14 : 6);
+	return QRect(x - 3, 2, w + 6, 28);
+}
+
+void GridPagination::paintEvent(QPaintEvent *e) {
+	Painter p(this);
+	p.setRenderHint(QPainter::Antialiasing);
+
+	const auto rect = QRectF(0.5, 0.5, width() - 1.0, height() - 1.0);
+	p.setPen(QPen(QColor(255, 255, 255, 30), 1.0));
+	p.setBrush(QColor(18, 22, 28, 220));
+	p.drawRoundedRect(rect, 16.0, 16.0);
+
+	const auto prevRect = prevButtonRect();
+	const auto canPrev = (_currentPage > 0);
+	if (canPrev && _hoveredPrev) {
+		p.setPen(Qt::NoPen);
+		p.setBrush(QColor(255, 255, 255, 28));
+		p.drawEllipse(prevRect.center(), 13, 13);
+	}
+	{
+		const auto color = canPrev
+			? (_hoveredPrev ? QColor(255, 255, 255) : QColor(220, 224, 230))
+			: QColor(255, 255, 255, 55);
+		p.setPen(QPen(color, 2.0, Qt::SolidLine, Qt::RoundCap, Qt::RoundJoin));
+		const auto cx = prevRect.center().x();
+		const auto cy = prevRect.center().y();
+		p.drawLine(QPointF(cx + 2, cy - 4.5), QPointF(cx - 2.5, cy));
+		p.drawLine(QPointF(cx - 2.5, cy), QPointF(cx + 2, cy + 4.5));
+	}
+
+	const auto text = QString::number(_currentPage + 1)
+		+ u" / "_q
+		+ QString::number(_pageCount);
+	p.setFont(st::semiboldFont);
+	p.setPen(QColor(240, 242, 245));
+	const auto textX = 4 + 28 + 6;
+	p.drawText(
+		QRect(textX, 0, _textWidth, height()),
+		Qt::AlignCenter,
+		text);
+
+	if (_pageCount <= 8 && _dotsWidth > 0) {
+		auto dotX = _dotsStartX;
+		for (auto i = 0; i < _pageCount; ++i) {
+			const auto isActive = (i == _currentPage);
+			const auto isHovered = (i == _hoveredDot);
+			const auto dw = isActive ? 14.0 : 6.0;
+			const auto dh = 6.0;
+			const auto dy = (height() - dh) / 2.0;
+			p.setPen(Qt::NoPen);
+			if (isActive) {
+				p.setBrush(QColor(82, 136, 236));
+			} else if (isHovered) {
+				p.setBrush(QColor(255, 255, 255, 180));
+			} else {
+				p.setBrush(QColor(255, 255, 255, 75));
+			}
+			p.drawRoundedRect(QRectF(dotX, dy, dw, dh), 3.0, 3.0);
+			dotX += dw + 5;
+		}
+	}
+
+	const auto nextRect = nextButtonRect();
+	const auto canNext = (_currentPage < _pageCount - 1);
+	if (canNext && _hoveredNext) {
+		p.setPen(Qt::NoPen);
+		p.setBrush(QColor(255, 255, 255, 28));
+		p.drawEllipse(nextRect.center(), 13, 13);
+	}
+	{
+		const auto color = canNext
+			? (_hoveredNext ? QColor(255, 255, 255) : QColor(220, 224, 230))
+			: QColor(255, 255, 255, 55);
+		p.setPen(QPen(color, 2.0, Qt::SolidLine, Qt::RoundCap, Qt::RoundJoin));
+		const auto cx = nextRect.center().x();
+		const auto cy = nextRect.center().y();
+		p.drawLine(QPointF(cx - 2, cy - 4.5), QPointF(cx + 2.5, cy));
+		p.drawLine(QPointF(cx + 2.5, cy), QPointF(cx - 2, cy + 4.5));
+	}
+}
+
+void GridPagination::mouseMoveEvent(QMouseEvent *e) {
+	const auto pos = e->pos();
+	const auto oldHoveredPrev = _hoveredPrev;
+	const auto oldHoveredNext = _hoveredNext;
+	const auto oldHoveredDot = _hoveredDot;
+
+	_hoveredPrev = prevButtonRect().contains(pos);
+	_hoveredNext = nextButtonRect().contains(pos);
+
+	_hoveredDot = -1;
+	if (_pageCount <= 8) {
+		for (auto i = 0; i < _pageCount; ++i) {
+			if (dotHitRect(i).contains(pos)) {
+				_hoveredDot = i;
+				break;
+			}
+		}
+	}
+
+	const auto clickable = (_hoveredPrev && _currentPage > 0)
+		|| (_hoveredNext && _currentPage < _pageCount - 1)
+		|| (_hoveredDot >= 0 && _hoveredDot != _currentPage);
+	setCursor(clickable ? style::cur_pointer : style::cur_default);
+
+	if (oldHoveredPrev != _hoveredPrev
+		|| oldHoveredNext != _hoveredNext
+		|| oldHoveredDot != _hoveredDot) {
+		update();
+	}
+}
+
+void GridPagination::mousePressEvent(QMouseEvent *e) {
+	if (e->button() != Qt::LeftButton) {
+		return;
+	}
+	const auto pos = e->pos();
+	if (prevButtonRect().contains(pos)) {
+		if (_currentPage > 0) {
+			_pageSelectRequests.fire_copy(_currentPage - 1);
+		}
+	} else if (nextButtonRect().contains(pos)) {
+		if (_currentPage < _pageCount - 1) {
+			_pageSelectRequests.fire_copy(_currentPage + 1);
+		}
+	} else if (_pageCount <= 8) {
+		for (auto i = 0; i < _pageCount; ++i) {
+			if (dotHitRect(i).contains(pos)) {
+				if (i != _currentPage) {
+					_pageSelectRequests.fire_copy(i);
+				}
+				break;
+			}
+		}
+	}
+}
+
+void GridPagination::leaveEventHook(QEvent *e) {
+	RpWidget::leaveEventHook(e);
+	if (_hoveredPrev || _hoveredNext || _hoveredDot != -1) {
+		_hoveredPrev = false;
+		_hoveredNext = false;
+		_hoveredDot = -1;
+		setCursor(style::cur_default);
+		update();
+	}
+}
 
 struct Panel::ControlsBackgroundNarrow {
 	explicit ControlsBackgroundNarrow(not_null<QWidget*> parent)
@@ -472,6 +722,10 @@ void Panel::initWindow() {
 	_call->hasVideoWithFramesValue(
 	) | rpl::on_next([=] {
 		updateMode();
+		if (_displayCoordinator) {
+			routeVideoToDisplays();
+			_displayCoordinator->checkAndCleanupEmptyScreens();
+		}
 	}, lifetime());
 
 	_window->maximizeRequests() | rpl::on_next([=](bool maximized) {
@@ -895,6 +1149,9 @@ void Panel::refreshVideoButtons(std::optional<bool> overrideWideMode) {
 			_chatToggle->setProgress(shown ? 1. : 0.);
 		}, _chatToggle->lifetime());
 	}
+	if (!_gridPagination) {
+		setupGridPagination();
+	}
 	if (!_screenShare) {
 		_screenShare.create(widget(), st::groupCallScreenShareSmall);
 		_screenShare->show();
@@ -1148,6 +1405,7 @@ void Panel::setupMembers() {
 
 	setupVideo(_viewport.get());
 	setupVideo(_members->viewport());
+	setupGridPagination();
 	routeVideoToDisplays();
 
 	// Re-route video when displays change
@@ -1162,6 +1420,8 @@ void Panel::setupMembers() {
 	) | rpl::on_next([=](const VideoStateToggle &update) {
 		if (!update.value) {
 			_displayCoordinator->removeVideoTrackFromAll(update.endpoint);
+			routeVideoToDisplays();
+			updateMode();
 		}
 	}, _callLifetime);
 
@@ -1351,6 +1611,9 @@ void Panel::raiseControls() {
 	if (_niceTooltip) {
 		_niceTooltip->raise();
 	}
+	if (_gridPagination) {
+		_gridPagination->raise();
+	}
 }
 
 void Panel::setupVideo(not_null<Viewport*> viewport) {
@@ -1381,6 +1644,12 @@ void Panel::setupVideo(not_null<Viewport*> viewport) {
 	for (const auto &[endpoint, track] : _call->activeVideoTracks()) {
 		setupTile(endpoint, track);
 	}
+	if (viewport == _viewport.get()) {
+		viewport->tilesCountChanges(
+		) | rpl::on_next([=](int count) {
+			updateMode();
+		}, viewport->lifetime());
+	}
 	_call->videoStreamActiveUpdates(
 	) | rpl::on_next([=](const VideoStateToggle &update) {
 		if (update.value) {
@@ -1391,11 +1660,17 @@ void Panel::setupVideo(not_null<Viewport*> viewport) {
 				const auto i = tracks.find(endpoint);
 				if (i != end(tracks)) {
 					setupTile(endpoint, i->second);
+					if (viewport == _viewport.get()) {
+						updateMode();
+					}
 				}
 			});
 		} else {
 			// Remove sync.
 			viewport->remove(update.endpoint);
+			if (viewport == _viewport.get()) {
+				updateMode();
+			}
 		}
 	}, viewport->lifetime());
 
@@ -1512,6 +1787,17 @@ void Panel::routeVideoToDisplays() {
 
 	crl::on_main(widget(), [=] {
 		const auto &tracks = _call->activeVideoTracks();
+		for (const auto screenIndex : _displayCoordinator->activeScreenIndices()) {
+			auto deadEndpoints = std::vector<VideoEndpoint>();
+			for (const auto &endpoint : _displayCoordinator->pinnedEndpoints(screenIndex)) {
+				if (tracks.find(endpoint) == tracks.end()) {
+					deadEndpoints.push_back(endpoint);
+				}
+			}
+			for (const auto &dead : deadEndpoints) {
+				_displayCoordinator->unpinFromScreen(screenIndex, dead);
+			}
+		}
 		for (const auto &[endpoint, track] : tracks) {
 			const auto row = _members->lookupRow(GroupCall::TrackPeer(track));
 			if (!row) {
@@ -1532,6 +1818,7 @@ void Panel::routeVideoToDisplays() {
 				}
 			}
 		}
+		_displayCoordinator->checkAndCleanupEmptyScreens();
 	});
 }
 
@@ -2140,14 +2427,26 @@ bool Panel::updateMode() {
 	if (!_viewport) {
 		return false;
 	}
-	if (_mode.current() == PanelMode::Grid && _viewport->gridModeValue().current()) {
-		return false;  // Preserve user-selected Grid mode
+	const auto hasVideo = _call->rtmp()
+		|| (_call->hasVideoWithFrames() && _viewport->tilesCount() > 0);
+	const auto wide = hasVideo
+		&& (widget()->width() >= st::groupCallWideModeWidthMin);
+
+	if (!wide) {
+		if (_viewport->gridModeValue().current()) {
+			_viewport->setGridMode(false);
+		}
+	} else if (_mode.current() == PanelMode::Grid && _viewport->gridModeValue().current()) {
+		return false;
 	}
-	const auto wide = _call->rtmp()
-		|| (_call->hasVideoWithFrames()
-			&& (widget()->width() >= st::groupCallWideModeWidthMin));
 	const auto mode = wide ? PanelMode::Wide : PanelMode::Default;
 	if (_mode.current() == mode) {
+		if (_viewport->widget()->isVisible() != wide) {
+			_viewport->widget()->setVisible(wide);
+		}
+		if (_gridPagination && !wide && _gridPagination->isVisible()) {
+			_gridPagination->setVisible(false);
+		}
 		return false;
 	}
 	if (!wide && _call->videoEndpointLarge()) {
@@ -2170,6 +2469,9 @@ bool Panel::updateMode() {
 	_wideControlsShown = _showWideControls = true;
 	_wideControlsAnimation.stop();
 	_viewport->widget()->setVisible(wide);
+	if (_gridPagination) {
+		_gridPagination->setVisible(wide && (_viewport->gridPageCount() > 1));
+	}
 	if (_members) {
 		_members->setMode(mode);
 	}
@@ -2437,6 +2739,55 @@ void Panel::setupControlsBackgroundWide() {
 	}, lifetime);
 
 	trackControls(true);
+}
+
+void Panel::setupGridPagination() {
+	if (_gridPagination || !_viewport) {
+		return;
+	}
+	_gridPagination.create(widget());
+	_gridPagination->hide();
+
+	_viewport->gridPageCountValue(
+	) | rpl::on_next([=](int count) {
+		if (_gridPagination) {
+			_gridPagination->setPageCount(count);
+			const auto visible = (count > 1)
+				&& (mode() == PanelMode::Wide || mode() == PanelMode::Grid);
+			_gridPagination->setVisible(visible);
+			if (visible) {
+				updateControlsGeometry();
+				_gridPagination->raise();
+			}
+		}
+	}, _gridPagination->lifetime());
+
+	_viewport->gridPageValue(
+	) | rpl::on_next([=](int page) {
+		if (_gridPagination) {
+			_gridPagination->setCurrentPage(page);
+		}
+	}, _gridPagination->lifetime());
+
+	_gridPagination->pageSelectRequests(
+	) | rpl::on_next([=](int page) {
+		if (_viewport) {
+			_viewport->setGridPage(page);
+		}
+	}, _gridPagination->lifetime());
+
+	_mode.value(
+	) | rpl::on_next([=](PanelMode mode) {
+		if (_gridPagination && _viewport) {
+			const auto visible = (_viewport->gridPageCount() > 1)
+				&& (mode == PanelMode::Wide || mode == PanelMode::Grid);
+			_gridPagination->setVisible(visible);
+			if (visible) {
+				updateControlsGeometry();
+				_gridPagination->raise();
+			}
+		}
+	}, _gridPagination->lifetime());
 }
 
 void Panel::trackControl(Ui::RpWidget *widget, rpl::lifetime &lifetime) {
@@ -2992,6 +3343,14 @@ void Panel::updateMembersGeometry() {
 			widget()->width() - viewportSkip - rightSkip,
 			widget()->height() - top - skip,
 		});
+		if (_gridPagination && _gridPagination->isVisible()) {
+			const auto vpGeo = _viewport->widget()->geometry();
+			const auto pagW = _gridPagination->width();
+			const auto pagH = _gridPagination->height();
+			const auto pagX = vpGeo.x() + (vpGeo.width() - pagW) / 2;
+			const auto pagY = vpGeo.y() + vpGeo.height() - pagH - 16;
+			_gridPagination->move(pagX, pagY);
+		}
 	} else {
 		const auto membersBottom = widget()->height();
 		const auto membersTop = st::groupCallMembersTop;

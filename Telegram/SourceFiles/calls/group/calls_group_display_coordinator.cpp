@@ -72,7 +72,8 @@ void DisplayCoordinator::updateScreens() {
 		}
 		currentIndices.insert(i);
 		if (_displays.find(i) == _displays.end()
-			&& _routedEndpoints.find(i) != _routedEndpoints.end()) {
+			&& _routedEndpoints.find(i) != _routedEndpoints.end()
+			&& !_routedEndpoints[i].empty()) {
 			createDisplayWindow(i, screens[i]);
 		}
 	}
@@ -137,17 +138,31 @@ void DisplayCoordinator::createDisplayWindow(int displayIndex, QScreen *screen) 
 		destroyDisplayWindow(displayIndex);
 	});
 
+	display.viewport->pinToggled(
+	) | rpl::on_next([this, displayIndex](const Viewport::PinToggle &toggle) {
+		unpinFromScreen(displayIndex, toggle.endpoint);
+	}, display.viewport->lifetime());
+
+	display.viewport->tilesCountChanges(
+	) | rpl::on_next([this, displayIndex](int count) {
+		if (count == 0) {
+			destroyDisplayWindow(displayIndex);
+		}
+	}, display.viewport->lifetime());
+
 	display.viewport->qualityRequests(
 	) | rpl::on_next([=](const VideoQualityRequest &request) {
 		_qualityRequests.fire_copy(request.endpoint);
 	}, display.viewport->lifetime());
 
 	setupWindowGeometry(display);
+	_displayCountChanged.fire(static_cast<int>(_displays.size()));
 }
 
 void DisplayCoordinator::destroyDisplayWindow(int displayIndex) {
 	auto it = _displays.find(displayIndex);
 	if (it == _displays.end()) {
+		_routedEndpoints.erase(displayIndex);
 		return;
 	}
 	if (it->second.viewport) {
@@ -159,6 +174,7 @@ void DisplayCoordinator::destroyDisplayWindow(int displayIndex) {
 	}
 	_displays.erase(it);
 	_routedEndpoints.erase(displayIndex);
+	_displayCountChanged.fire(static_cast<int>(_displays.size()));
 }
 
 void DisplayCoordinator::setupWindowGeometry(DisplayWindow &display) {
@@ -253,27 +269,53 @@ void DisplayCoordinator::pinToScreen(
 		return;
 	}
 	_routedEndpoints[screenIndex].insert(endpoint);
-	it->second.viewport->add(
-		endpoint,
-		track,
-		std::move(trackSize),
-		rpl::single(true),
-		self);
-	it->second.viewport->togglePin(endpoint, true);
+	if (!it->second.viewport->isPinned(endpoint)) {
+		it->second.viewport->add(
+			endpoint,
+			track,
+			std::move(trackSize),
+			rpl::single(true),
+			self);
+		it->second.viewport->togglePin(endpoint, true);
+	}
 	showDisplay(screenIndex);
 }
 
 void DisplayCoordinator::unpinFromScreen(int screenIndex, const VideoEndpoint &endpoint) {
 	auto it = _displays.find(screenIndex);
-	if (it == _displays.end() || !it->second.viewport) {
-		return;
+	auto rit = _routedEndpoints.find(screenIndex);
+
+	if (endpoint.id.empty()) {
+		auto matching = std::vector<VideoEndpoint>();
+		if (rit != _routedEndpoints.end()) {
+			for (const auto &e : rit->second) {
+				if (e.peer == endpoint.peer && e.type == endpoint.type) {
+					matching.push_back(e);
+				}
+			}
+		}
+		for (const auto &m : matching) {
+			if (it != _displays.end() && it->second.viewport) {
+				it->second.viewport->togglePin(m, false);
+				it->second.viewport->remove(m);
+			}
+			if (rit != _routedEndpoints.end()) {
+				rit->second.erase(m);
+			}
+		}
+	} else {
+		if (it != _displays.end() && it->second.viewport) {
+			it->second.viewport->togglePin(endpoint, false);
+			it->second.viewport->remove(endpoint);
+		}
+		if (rit != _routedEndpoints.end()) {
+			rit->second.erase(endpoint);
+		}
 	}
-	_routedEndpoints[screenIndex].erase(endpoint);
-	it->second.viewport->togglePin(endpoint, false);
-	it->second.viewport->remove(endpoint);
-	if (_routedEndpoints[screenIndex].empty()) {
-		destroyDisplayWindow(screenIndex);
+	if (rit != _routedEndpoints.end() && rit->second.empty()) {
+		_routedEndpoints.erase(rit);
 	}
+	checkAndCleanupEmptyScreens();
 }
 
 bool DisplayCoordinator::isPinnedOnScreen(int screenIndex, const VideoEndpoint &endpoint) const {
@@ -281,12 +323,61 @@ bool DisplayCoordinator::isPinnedOnScreen(int screenIndex, const VideoEndpoint &
 	if (it == _routedEndpoints.end()) {
 		return false;
 	}
+	if (endpoint.id.empty()) {
+		return std::any_of(it->second.begin(), it->second.end(), [&](const VideoEndpoint &e) {
+			return e.peer == endpoint.peer && e.type == endpoint.type;
+		});
+	}
 	return it->second.find(endpoint) != it->second.end();
 }
 
 int DisplayCoordinator::pinnedCount(int screenIndex) const {
 	auto it = _routedEndpoints.find(screenIndex);
 	return (it != _routedEndpoints.end()) ? int(it->second.size()) : 0;
+}
+
+std::vector<VideoEndpoint> DisplayCoordinator::pinnedEndpoints(int screenIndex) const {
+	auto it = _routedEndpoints.find(screenIndex);
+	if (it == _routedEndpoints.end()) {
+		return {};
+	}
+	return { it->second.begin(), it->second.end() };
+}
+
+bool DisplayCoordinator::hasPinnedFeeds(int screenIndex) const {
+	const auto dit = _displays.find(screenIndex);
+	if (dit != _displays.end() && dit->second.viewport) {
+		if (dit->second.viewport->tilesCount() == 0) {
+			return false;
+		}
+	}
+	const auto it = _routedEndpoints.find(screenIndex);
+	if (it == _routedEndpoints.end() || it->second.empty()) {
+		return false;
+	}
+	return true;
+}
+
+void DisplayCoordinator::checkAndCleanupEmptyScreens() {
+	std::vector<int> emptyRouted;
+	for (const auto &[screenIndex, endpoints] : _routedEndpoints) {
+		if (endpoints.empty()) {
+			emptyRouted.push_back(screenIndex);
+		}
+	}
+	for (const auto idx : emptyRouted) {
+		_routedEndpoints.erase(idx);
+	}
+
+	std::vector<int> toDestroy;
+	for (const auto &[displayIndex, _] : _displays) {
+		if (!hasPinnedFeeds(displayIndex)) {
+			toDestroy.push_back(displayIndex);
+		}
+	}
+	for (const auto idx : toDestroy) {
+		destroyDisplayWindow(idx);
+	}
 }
 
 void DisplayCoordinator::addVideoTrack(
@@ -298,27 +389,28 @@ void DisplayCoordinator::addVideoTrack(
 		bool self) {
 	_peerToEndpoints[endpoint.peer] = endpoint;
 	auto it = _displays.find(displayIndex);
-	if (it == _displays.end()) {
+	if (it == _displays.end() || !it->second.viewport) {
 		return;
 	}
-	if (!it->second.viewport) {
-		return;
+	if (!it->second.viewport->isPinned(endpoint)) {
+		it->second.viewport->add(endpoint, track, std::move(trackSize), std::move(pinned), self);
+		it->second.viewport->togglePin(endpoint, true);
 	}
-	it->second.viewport->add(endpoint, track, std::move(trackSize), std::move(pinned), self);
 }
 
 void DisplayCoordinator::removeVideoTrack(int displayIndex, const VideoEndpoint &endpoint) {
 	auto it = _displays.find(displayIndex);
-	if (it == _displays.end()) {
-		return;
+	if (it != _displays.end() && it->second.viewport) {
+		it->second.viewport->remove(endpoint);
 	}
-	if (!it->second.viewport) {
-		return;
+	auto rit = _routedEndpoints.find(displayIndex);
+	if (rit != _routedEndpoints.end()) {
+		rit->second.erase(endpoint);
+		if (rit->second.empty()) {
+			_routedEndpoints.erase(rit);
+		}
 	}
-	it->second.viewport->remove(endpoint);
-	if (_routedEndpoints[displayIndex].empty()) {
-		destroyDisplayWindow(displayIndex);
-	}
+	checkAndCleanupEmptyScreens();
 }
 
 void DisplayCoordinator::showLarge(int displayIndex, const VideoEndpoint &endpoint) {
@@ -349,15 +441,43 @@ std::vector<int> DisplayCoordinator::activeScreenIndices() const {
 	return result;
 }
 
+bool DisplayCoordinator::hasTrack(int displayIndex, const VideoEndpoint &endpoint) const {
+	const auto it = _displays.find(displayIndex);
+	if (it == _displays.end() || !it->second.viewport) {
+		return false;
+	}
+	return it->second.viewport->isPinned(endpoint);
+}
+
 void DisplayCoordinator::removeVideoTrackFromAll(const VideoEndpoint &endpoint) {
+	auto toRemove = std::vector<VideoEndpoint>();
+	for (const auto &[screenIndex, endpoints] : _routedEndpoints) {
+		for (const auto &e : endpoints) {
+			if (endpoint.id.empty()) {
+				if (e.peer == endpoint.peer && e.type == endpoint.type) {
+					toRemove.push_back(e);
+				}
+			} else if (e == endpoint || (e.peer == endpoint.peer && e.type == endpoint.type)) {
+				toRemove.push_back(e);
+			}
+		}
+	}
+	for (const auto &ep : toRemove) {
+		for (auto &[displayIndex, display] : _displays) {
+			if (display.viewport) {
+				display.viewport->remove(ep);
+			}
+		}
+		for (auto &[screenIndex, endpoints] : _routedEndpoints) {
+			endpoints.erase(ep);
+		}
+	}
 	for (auto &[displayIndex, display] : _displays) {
 		if (display.viewport) {
 			display.viewport->remove(endpoint);
 		}
 	}
-	for (auto &[screenIndex, endpoints] : _routedEndpoints) {
-		endpoints.erase(endpoint);
-	}
+	checkAndCleanupEmptyScreens();
 }
 
 rpl::producer<int> DisplayCoordinator::displayCountChanged() const {

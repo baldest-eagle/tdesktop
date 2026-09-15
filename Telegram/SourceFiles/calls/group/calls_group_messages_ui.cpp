@@ -566,11 +566,11 @@ void MessagesUi::updateMessageSize(MessageView &entry) {
 		? (userpicPadding.left() + userpicSize + userpicPadding.right())
 		: padding.left();
 	const auto widthSkip = leftSkip + padding.right();
-	const auto inner = _width - widthSkip;
+	const auto inner = std::max(1, _width - widthSkip);
 
 	const auto size = Ui::Text::CountOptimalTextSize(
 		entry.text,
-		std::min(st::groupCallWidth / 2, inner),
+		std::clamp(std::min(st::groupCallWidth / 2, inner), 0, inner),
 		inner);
 	const auto price = entry.simple
 		? (pricePadding.left() + pricePadding.right() + entry.price.maxWidth())
@@ -1925,6 +1925,15 @@ void MessagesUi::raise() {
 		if (const auto widget = view.reactionWidget.get()) {
 			widget->raise();
 		}
+	}
+}
+
+void MessagesUi::setVisible(bool visible) {
+	if (_scroll) {
+		_scroll->setVisible(visible);
+	}
+	if (_pinnedScroll) {
+		_pinnedScroll->setVisible(visible);
 	}
 }
 
