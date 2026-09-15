@@ -799,7 +799,7 @@ void Viewport::RendererGL::paintTile(
 		shadowHeight,
 		shown,
 		shadowAlpha,
-		fullscreen ? 0. : kBlurOpacity));
+		0.));
 	program->setUniformValue("paused", GLfloat(paused));
 
 	f.glActiveTexture(_rgbaFrame ? GL_TEXTURE1 : GL_TEXTURE3);

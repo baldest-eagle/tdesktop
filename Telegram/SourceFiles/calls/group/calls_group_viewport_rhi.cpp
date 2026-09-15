@@ -1261,7 +1261,7 @@ void Viewport::RendererRhi::drawFramePass(
 	uniforms.shadow[0] = shadowHeight;
 	uniforms.shadow[1] = shown;
 	uniforms.shadow[2] = shadowAlpha;
-	uniforms.shadow[3] = fullscreen ? 0.f : kBlurOpacity;
+	uniforms.shadow[3] = 0.f;
 
 	uniforms.paused = float(paused);
 
