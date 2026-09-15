@@ -80,7 +80,7 @@ void DisplayCoordinator::updateScreens() {
 
 	std::vector<int> toRemove;
 	for (const auto &entry : _displays) {
-		if (currentIndices.find(entry.first) == currentIndices.end()) {
+		if (entry.first < 0 || entry.first >= screens.size()) {
 			toRemove.push_back(entry.first);
 		}
 	}
@@ -140,13 +140,17 @@ void DisplayCoordinator::createDisplayWindow(int displayIndex, QScreen *screen) 
 
 	display.viewport->pinToggled(
 	) | rpl::on_next([this, displayIndex](const Viewport::PinToggle &toggle) {
-		unpinFromScreen(displayIndex, toggle.endpoint);
+		if (!toggle.pinned) {
+			unpinFromScreen(displayIndex, toggle.endpoint);
+		}
 	}, display.viewport->lifetime());
 
 	display.viewport->tilesCountChanges(
 	) | rpl::on_next([this, displayIndex](int count) {
 		if (count == 0) {
-			destroyDisplayWindow(displayIndex);
+			crl::on_main([this, displayIndex] {
+				checkAndCleanupEmptyScreens();
+			});
 		}
 	}, display.viewport->lifetime());
 
@@ -296,7 +300,6 @@ void DisplayCoordinator::unpinFromScreen(int screenIndex, const VideoEndpoint &e
 		}
 		for (const auto &m : matching) {
 			if (it != _displays.end() && it->second.viewport) {
-				it->second.viewport->togglePin(m, false);
 				it->second.viewport->remove(m);
 			}
 			if (rit != _routedEndpoints.end()) {
@@ -305,7 +308,6 @@ void DisplayCoordinator::unpinFromScreen(int screenIndex, const VideoEndpoint &e
 		}
 	} else {
 		if (it != _displays.end() && it->second.viewport) {
-			it->second.viewport->togglePin(endpoint, false);
 			it->second.viewport->remove(endpoint);
 		}
 		if (rit != _routedEndpoints.end()) {
@@ -462,19 +464,22 @@ void DisplayCoordinator::removeVideoTrackFromAll(const VideoEndpoint &endpoint) 
 			}
 		}
 	}
+	const auto displayIndices = activeScreenIndices();
 	for (const auto &ep : toRemove) {
-		for (auto &[displayIndex, display] : _displays) {
-			if (display.viewport) {
-				display.viewport->remove(ep);
+		for (const auto idx : displayIndices) {
+			const auto it = _displays.find(idx);
+			if (it != _displays.end() && it->second.viewport) {
+				it->second.viewport->remove(ep);
 			}
 		}
 		for (auto &[screenIndex, endpoints] : _routedEndpoints) {
 			endpoints.erase(ep);
 		}
 	}
-	for (auto &[displayIndex, display] : _displays) {
-		if (display.viewport) {
-			display.viewport->remove(endpoint);
+	for (const auto idx : displayIndices) {
+		const auto it = _displays.find(idx);
+		if (it != _displays.end() && it->second.viewport) {
+			it->second.viewport->remove(endpoint);
 		}
 	}
 	checkAndCleanupEmptyScreens();
