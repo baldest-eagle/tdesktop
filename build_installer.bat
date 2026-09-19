@@ -1,17 +1,17 @@
 @echo off
 :: =============================================================================
-:: Telegram Desktop Fork — One-Click Installer Builder
+:: tdesktop — One-Click Installer Builder
 :: =============================================================================
 :: Just double-click this file to build the installer.
 :: Supports optional argument: build_installer.bat [Debug|Release]
 :: Default targets Debug if present, or Release if only Release exists.
 :: =============================================================================
 
-title Building Telegram Desktop Fork Installer...
+title Building tdesktop Installer...
 
 echo.
 echo ===============================================================================
-echo   Building Telegram Desktop Fork Installer
+echo   Building tdesktop Installer
 echo ===============================================================================
 echo.
 
@@ -117,7 +117,7 @@ if %errorlevel% neq 0 (
 )
 
 :: Verify output
-set "OUTPUT_INSTALLER=%TARGET_DIR%\TelegramDesktopFork-Setup.exe"
+set "OUTPUT_INSTALLER=%TARGET_DIR%\tdesktop-Setup.exe"
 
 if exist "%OUTPUT_INSTALLER%" (
     echo.
@@ -127,7 +127,7 @@ if exist "%OUTPUT_INSTALLER%" (
     echo.
     echo Installer created: %OUTPUT_INSTALLER%
     echo.
-    echo To install Telegram Desktop Fork, simply double-click the file above.
+    echo To install tdesktop, simply double-click the file above.
     echo Share this installer with anyone — they don't need any technical knowledge!
     echo.
 ) else (

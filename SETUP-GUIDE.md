@@ -1,9 +1,9 @@
-# Telegram Desktop Fork — Setup Guide
+# tdesktop — Setup Guide
 ## For People Who Don't Use the Terminal
 
 ### What Is This?
 
-This is a custom version of Telegram Desktop with extra features (multi-monitor support, snap grids, floating overlays, and more). The installer sets everything up for you — no command prompt or technical knowledge needed.
+This is a custom version of tdesktop (Telegram Desktop) with extra features (multi-monitor support, snap grids, floating overlays, and more). The installer sets everything up for you — no command prompt or technical knowledge needed.
 
 ---
 
@@ -17,19 +17,19 @@ This is a custom version of Telegram Desktop with extra features (multi-monitor 
 
 ### How to Install
 
-1. **Find the installer file** — It's called `TelegramDesktopFork-Setup.exe` and lives in `out\Debug` (or `out\Release`).
+1. **Find the installer file** — It's called `tdesktop-Setup.exe` and lives in `out\Debug` (or `out\Release`).
 
 2. **Double-click it** — Windows may ask "Do you want to allow this app to make changes?" — click **Yes**.
 
 3. **Follow the wizard** — The installer will walk you through:
    - **Welcome screen** → Click *Next*
    - **License agreement** → Read the GPL license, choose *I accept the agreement*, then click *Next*
-   - **Install location** → Defaults to `%LOCALAPPDATA%\TelegramDesktopFork` (per-user, no admin required) → Click *Next*
-   - **Start Menu folder** → Select shortcut group name (default is fine) → Click *Next*
+   - **Install location** → Defaults to `%LOCALAPPDATA%\tdesktop` (per-user, no admin required) → Click *Next*
+   - **Start Menu folder** → Select shortcut group name (default `tdesktop` is fine) → Click *Next*
    - **Shortcuts** → Select whether to create desktop and Start Menu shortcuts, then click *Next*
    - **Ready to Install** → Review settings and click *Install*
    - **Progress bar** → Wait a moment (usually under 30 seconds)
-   - **Finish** → Leave "Launch Telegram Desktop Fork" checked and click *Finish*
+   - **Finish** → Leave "Launch tdesktop" checked and click *Finish*
 
 4. **Done!** — Telegram will open. Sign in with your phone number just like regular Telegram.
 
@@ -58,19 +58,19 @@ This is a custom version of Telegram Desktop with extra features (multi-monitor 
 ### How to Uninstall
 
 1. Open **Settings → Apps → Installed apps**
-2. Search for "Telegram Desktop Fork"
+2. Search for "tdesktop"
 3. Click the **⋯** menu → **Uninstall**
 4. Confirm
 
-Or: Go to the Start Menu → "Telegram Desktop Fork" group → "Uninstall Telegram Desktop Fork".
+Or: Go to the Start Menu → "tdesktop" group → "Uninstall tdesktop".
 
 ---
 
 ### Where Are My Files?
 
-- **App installed at:** `%LOCALAPPDATA%\TelegramDesktopFork\`
+- **App installed at:** `%LOCALAPPDATA%\tdesktop\`
 - **Your data/settings:** `%APPDATA%\Telegram Desktop\`
-- **Crash logs (if needed):** `%LOCALAPPDATA%\TelegramDesktopFork\DebugLogs\`
+- **Crash logs (if needed):** `%LOCALAPPDATA%\tdesktop\DebugLogs\`
 
 > `%LOCALAPPDATA%` is usually `C:\Users\YOURNAME\AppData\Local\`
 > `%APPDATA%` is usually `C:\Users\YOURNAME\AppData\Roaming\`

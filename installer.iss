@@ -1,5 +1,5 @@
 ; -----------------------------------------------------------------------------
-; Telegram Desktop Fork — Beginner-Friendly Setup Wizard
+; tdesktop — Setup Wizard
 ; -----------------------------------------------------------------------------
 ; Compile this file with Inno Setup 6 or 7 (https://jrsoftware.org/isdl.php).
 ; Run build_installer.bat or open this .iss file in Inno Setup Compiler.
@@ -13,17 +13,17 @@
 [Setup]
 ; --- Application identity ---
 AppId={{B8A3F1D2-E5C7-4A9B-8D3E-1F6C9A2B4E7D}
-AppName=Telegram Desktop (Custom Fork)
+AppName=tdesktop
 AppVersion=7.0.9.0
-AppPublisher=Custom Build
+AppPublisher=tdesktop
 AppPublisherURL=https://desktop.telegram.org
 AppSupportURL=https://desktop.telegram.org
 AppUpdatesURL=https://desktop.telegram.org
 
 ; --- Default install location ---
-; Uses %LOCALAPPDATA%\TelegramDesktopFork (per-user, no admin required)
-DefaultDirName={localappdata}\TelegramDesktopFork
-DefaultGroupName=Telegram Desktop Fork
+; Uses %LOCALAPPDATA%\tdesktop (per-user, no admin required)
+DefaultDirName={localappdata}\tdesktop
+DefaultGroupName=tdesktop
 
 ; --- Installer behavior ---
 AllowNoIcons=yes
@@ -43,13 +43,13 @@ WizardSizePercent=120,120
 
 ; --- Output ---
 OutputDir={#BuildDir}
-OutputBaseFilename=TelegramDesktopFork-Setup
+OutputBaseFilename=tdesktop-Setup
 Compression=lzma2/max
 SolidCompression=yes
 
 ; --- Icons & branding ---
 SetupIconFile=Telegram\Resources\art\icon256.ico
-UninstallDisplayName=Telegram Desktop Fork
+UninstallDisplayName=tdesktop
 UninstallDisplayIcon={app}\Telegram.exe
 
 ; --- 64-bit on modern Windows ---
@@ -58,7 +58,7 @@ ArchitecturesInstallIn64BitMode=x64compatible
 
 ; --- Version info for Windows Explorer ---
 VersionInfoVersion=7.0.9.0
-VersionInfoDescription=Telegram Desktop Fork Installer
+VersionInfoDescription=tdesktop Installer
 VersionInfoCopyright=Custom Build
 
 [Languages]
@@ -78,15 +78,15 @@ Source: "{#BuildDir}\modules\x64\d3d\d3dcompiler_47.dll"; DestDir: "{app}\module
 
 [Icons]
 ; Start Menu group icon (controlled by startmenuicon task)
-Name: "{group}\Telegram Desktop Fork"; Filename: "{app}\Telegram.exe"; Tasks: startmenuicon
+Name: "{group}\tdesktop"; Filename: "{app}\Telegram.exe"; Tasks: startmenuicon
 ; Uninstaller in Start Menu
-Name: "{group}\Uninstall Telegram Desktop Fork"; Filename: "{uninstallexe}"; Tasks: startmenuicon
+Name: "{group}\Uninstall tdesktop"; Filename: "{uninstallexe}"; Tasks: startmenuicon
 ; Desktop shortcut (controlled by desktopicon task)
-Name: "{userdesktop}\Telegram Desktop Fork"; Filename: "{app}\Telegram.exe"; Tasks: desktopicon
+Name: "{userdesktop}\tdesktop"; Filename: "{app}\Telegram.exe"; Tasks: desktopicon
 
 [Run]
 ; Launch after install (checkbox on finish page)
-Filename: "{app}\Telegram.exe"; Description: "Launch Telegram Desktop Fork"; Flags: nowait postinstall skipifsilent
+Filename: "{app}\Telegram.exe"; Description: "Launch tdesktop"; Flags: nowait postinstall skipifsilent
 
 [UninstallDelete]
 ; Clean up runtime data created by the app
@@ -106,7 +106,7 @@ Type: dirifempty; Name: "{app}"
 function IsTelegramRunning: Boolean;
 begin
   Result := (FindWindowByWindowName('Telegram') <> 0) or
-            (FindWindowByWindowName('Telegram Desktop Fork') <> 0) or
+            (FindWindowByWindowName('tdesktop') <> 0) or
             (FindWindowByWindowName('Telegram Desktop') <> 0);
 end;
 
