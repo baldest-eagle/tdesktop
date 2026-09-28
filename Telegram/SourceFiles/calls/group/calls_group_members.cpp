@@ -1457,9 +1457,21 @@ base::unique_qptr<Ui::PopupMenu> Members::Controller::createRowContextMenu(
 						});
 				} else {
 					result->addAction(
-						u"Pin Camera to Screen 1"_q,
+						u"Add Camera to Screen 1"_q,
 						[=] {
 							if (const auto p = Core::App().calls().currentGroupCallPanel()) {
+								p->pinToScreen(0, camera);
+							}
+						});
+					result->addAction(
+						u"Replace Camera on Screen 1"_q,
+						[=] {
+							if (const auto p = Core::App().calls().currentGroupCallPanel()) {
+								if (const auto coord = p->displayCoordinator()) {
+									for (const auto &ep : coord->pinnedEndpoints(0)) {
+										p->unpinFromScreen(0, ep);
+									}
+								}
 								p->pinToScreen(0, camera);
 							}
 						});
@@ -1474,10 +1486,61 @@ base::unique_qptr<Ui::PopupMenu> Members::Controller::createRowContextMenu(
 						});
 				} else {
 					result->addAction(
-						u"Pin Camera to Screen 2"_q,
+						u"Add Camera to Screen 2"_q,
 						[=] {
 							if (const auto p = Core::App().calls().currentGroupCallPanel()) {
 								p->pinToScreen(1, camera);
+							}
+						});
+					result->addAction(
+						u"Replace Camera on Screen 2"_q,
+						[=] {
+							if (const auto p = Core::App().calls().currentGroupCallPanel()) {
+								if (const auto coord = p->displayCoordinator()) {
+									for (const auto &ep : coord->pinnedEndpoints(1)) {
+										p->unpinFromScreen(1, ep);
+									}
+								}
+								p->pinToScreen(1, camera);
+							}
+						});
+				}
+			}
+
+			if (const auto p = Core::App().calls().currentGroupCallPanel()) {
+				if (shown.contains(camera)) {
+					const auto isHidden = p->viewport() && p->viewport()->isHidden(camera);
+					result->addAction(
+						isHidden ? u"Reveal Camera in Main Grid"_q : u"Hide Camera from Main Grid"_q,
+						[=] {
+							if (const auto p = Core::App().calls().currentGroupCallPanel()) {
+								if (p->viewport()) {
+									p->viewport()->toggleHidden(camera, !isHidden);
+									p->setupVideo(p->viewport());
+								}
+								if (p->members() && p->members()->viewport()) {
+									p->members()->viewport()->toggleHidden(camera, !isHidden);
+									p->setupVideo(p->members()->viewport());
+								}
+								p->updateMode();
+							}
+						});
+				}
+				if (shown.contains(screen)) {
+					const auto isHidden = p->viewport() && p->viewport()->isHidden(screen);
+					result->addAction(
+						isHidden ? u"Reveal Screen in Main Grid"_q : u"Hide Screen from Main Grid"_q,
+						[=] {
+							if (const auto p = Core::App().calls().currentGroupCallPanel()) {
+								if (p->viewport()) {
+									p->viewport()->toggleHidden(screen, !isHidden);
+									p->setupVideo(p->viewport());
+								}
+								if (p->members() && p->members()->viewport()) {
+									p->members()->viewport()->toggleHidden(screen, !isHidden);
+									p->setupVideo(p->members()->viewport());
+								}
+								p->updateMode();
 							}
 						});
 				}
@@ -1493,9 +1556,21 @@ base::unique_qptr<Ui::PopupMenu> Members::Controller::createRowContextMenu(
 						});
 				} else {
 					result->addAction(
-						u"Pin Screen to Screen 1"_q,
+						u"Add Screen to Screen 1"_q,
 						[=] {
 							if (const auto p = Core::App().calls().currentGroupCallPanel()) {
+								p->pinToScreen(0, screen);
+							}
+						});
+					result->addAction(
+						u"Replace Screen on Screen 1"_q,
+						[=] {
+							if (const auto p = Core::App().calls().currentGroupCallPanel()) {
+								if (const auto coord = p->displayCoordinator()) {
+									for (const auto &ep : coord->pinnedEndpoints(0)) {
+										p->unpinFromScreen(0, ep);
+									}
+								}
 								p->pinToScreen(0, screen);
 							}
 						});
@@ -1510,9 +1585,21 @@ base::unique_qptr<Ui::PopupMenu> Members::Controller::createRowContextMenu(
 						});
 				} else {
 					result->addAction(
-						u"Pin Screen to Screen 2"_q,
+						u"Add Screen to Screen 2"_q,
 						[=] {
 							if (const auto p = Core::App().calls().currentGroupCallPanel()) {
+								p->pinToScreen(1, screen);
+							}
+						});
+					result->addAction(
+						u"Replace Screen on Screen 2"_q,
+						[=] {
+							if (const auto p = Core::App().calls().currentGroupCallPanel()) {
+								if (const auto coord = p->displayCoordinator()) {
+									for (const auto &ep : coord->pinnedEndpoints(1)) {
+										p->unpinFromScreen(1, ep);
+									}
+								}
 								p->pinToScreen(1, screen);
 							}
 						});
