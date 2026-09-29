@@ -158,12 +158,8 @@ EOF
 
 FROM builder AS patches
 RUN <<EOF
-git init patches
-cd patches
-git remote add origin https://github.com/desktop-app/patches.git
-git fetch --depth=1 origin 27efa67b60881c52b112cf924d705e573d03a0ab
-git reset --hard FETCH_HEAD
-rm -rf .git
+mkdir patches
+# Intentionally omitting patches checkout since it was deleted
 EOF
 
 FROM builder AS zlib

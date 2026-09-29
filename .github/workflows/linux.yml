@@ -60,7 +60,7 @@ jobs:
       - name: Clone.
         uses: actions/checkout@v7
         with:
-          submodules: true
+          submodules: recursive
 
       - name: First set up.
         run: |

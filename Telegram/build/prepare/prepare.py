@@ -452,7 +452,7 @@ if customRunCommand:
     finish(0)
 
 stage('patches', """
-    git clone https://github.com/desktop-app/patches.git
+    git clone https://github.com/desktop-app/patches.git || echo 'Patches unavailable'
     cd patches
     git checkout a17d54b63128c83cb53bd71044119e77b3a2da02
 mac:
