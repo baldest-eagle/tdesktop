@@ -585,7 +585,7 @@ void Panel::showAndActivate() {
 	if (state & Qt::WindowMinimized) {
 		window()->setWindowState(state & ~Qt::WindowMinimized);
 	}
-	Ui::Platform::RestoreWindow(window());
+	// Ui::Platform::RestoreWindow(window());
 	window()->raise();
 	window()->activateWindow();
 	window()->setFocus();
@@ -2456,6 +2456,8 @@ QRect Panel::computeTitleRect() const {
 		: QRect(remove, 0, controls.x() - skip - remove, controls.height());
 #endif // !Q_OS_MAC
 }
+
+Members *Panel::members() const { return _members.data(); }
 
 bool Panel::updateMode() {
 	if (!_viewport) {

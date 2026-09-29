@@ -1507,6 +1507,7 @@ base::unique_qptr<Ui::PopupMenu> Members::Controller::createRowContextMenu(
 				}
 			}
 
+#if 0
 			if (const auto p = Core::App().calls().currentGroupCallPanel()) {
 				if (shown.contains(camera)) {
 					const auto isHidden = p->viewport() && p->viewport()->isHidden(camera);
@@ -1545,6 +1546,7 @@ base::unique_qptr<Ui::PopupMenu> Members::Controller::createRowContextMenu(
 						});
 				}
 			}
+#endif
 			if (shown.contains(screen) || (coordinator && (coordinator->isPinnedOnScreen(0, screen) || coordinator->isPinnedOnScreen(1, screen)))) {
 				if (coordinator && coordinator->isPinnedOnScreen(0, screen)) {
 					result->addAction(

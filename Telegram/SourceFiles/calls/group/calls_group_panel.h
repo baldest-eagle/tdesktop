@@ -146,7 +146,10 @@ private:
 	void initGeometry(ConferencePanelMigration info);
 	void setupScheduledLabels(rpl::producer<TimeId> date);
 	void setupMembers();
+
+public:
 	void setupVideo(not_null<Viewport*> viewport);
+private:
 	void routeVideoToDisplays();
 	void retryRoutingForPeer(not_null<PeerData*> peer);
 	void setupRealMuteButtonState(not_null<Data::GroupCall*> real);
@@ -168,7 +171,10 @@ private:
 	void hideStickedTooltip(StickedTooltip type, StickedTooltipHide hide);
 	void hideNiceTooltip();
 
+public:
 	bool updateMode();
+	Members *members() const;
+private:
 	void updateControlsGeometry();
 	void updateButtonsGeometry();
 	void updateTooltipGeometry();

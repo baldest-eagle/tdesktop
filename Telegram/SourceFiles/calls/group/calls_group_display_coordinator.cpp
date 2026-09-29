@@ -8,6 +8,7 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "calls/group/calls_group_display_coordinator.h"
 
 #include "calls/group/calls_group_viewport.h"
+#include "calls/group/calls_group_members.h"
 #include "ui/platform/ui_platform_utility.h"
 #include "ui/widgets/labels.h"
 
@@ -109,7 +110,7 @@ void DisplayCoordinator::createDisplayWindow(int displayIndex, QScreen *screen) 
 		_displays.erase(displayIndex);
 		return;
 	}
-	Ui::Platform::EnsureAppWindow(display.widget.get());
+	// Ui::Platform::EnsureAppWindow(display.widget.get());
 
 	display.widget->setWindowTitle(RoleText(display.role));
 	display.widget->setAttribute(Qt::WA_OpaquePaintEvent);
