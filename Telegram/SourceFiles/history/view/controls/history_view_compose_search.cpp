@@ -777,6 +777,31 @@ BottomBar::BottomBar(not_null<Ui::RpWidget*> parent, bool fastShowChooseFrom)
 	) | rpl::on_next([=](int way) {
 		_current = _current.current() + way;
 	}, lifetime());
+
+	tr::lng_shortcuts_media_previous(
+	) | rpl::start_with_next([=](const QString &text) {
+		_previous->setAccessibleName(text);
+	}, _previous->lifetime());
+
+	tr::lng_shortcuts_media_next(
+	) | rpl::start_with_next([=](const QString &text) {
+		_next->setAccessibleName(text);
+	}, _next->lifetime());
+
+	tr::lng_sr_search_date(
+	) | rpl::start_with_next([=](const QString &text) {
+		_jumpToDate->setAccessibleName(text);
+	}, _jumpToDate->lifetime());
+
+	tr::lng_search_messages_from(
+	) | rpl::start_with_next([=](const QString &text) {
+		_chooseFromUser->setAccessibleName(text);
+	}, _chooseFromUser->lifetime());
+
+	tr::lng_sr_message_list(
+	) | rpl::start_with_next([=](const QString &text) {
+		_showList->setAccessibleName(text);
+	}, _showList->lifetime());
 }
 
 bool BottomBar::handleKeyPress(not_null<QKeyEvent*> e) {
