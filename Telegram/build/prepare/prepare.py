@@ -452,11 +452,11 @@ if customRunCommand:
     finish(0)
 
 stage('patches', """
-    git clone https://github.com/desktop-app/patches.git
+
     cd patches
     git checkout a17d54b63128c83cb53bd71044119e77b3a2da02
 mac:
-    git clone https://github.com/desktop-app/qt6_highsierra_patches.git qt6_highsierra
+
     cd qt6_highsierra
     git checkout 4aae812a405f47553e001faf566de572d3eccd16
 """)
@@ -1071,7 +1071,7 @@ mac:
 
 stage('libvpx', """
     git clone https://github.com/webmproject/libvpx.git
-depends:patches/libvpx/*.patch
+# libvpx/*.patch (patches dep removed)
     cd libvpx
     git checkout v1.14.1
 win:
@@ -1088,10 +1088,10 @@ win64:
 winarm:
     SET "TOOLCHAIN=arm64-win64-vs17-v145"
 win:
-depends:patches/build_libvpx_win.sh
-    bash ../patches/build_libvpx_win.sh
+
+
 mac:
-    find ../patches/libvpx -type f -print0 | sort -z | xargs -0 git apply
+
 
     ./configure --prefix=$USED_PREFIX \
     --target=arm64-darwin20-gcc \
@@ -1178,7 +1178,7 @@ stage('ffmpeg', """
     git clone -b n6.1.6 https://github.com/FFmpeg/FFmpeg.git ffmpeg
     cd ffmpeg
 win:
-depends:patches/ffmpeg.patch
+# ffmpeg.patch (patches dep removed)
     git apply ../patches/ffmpeg.patch
 
     SET PATH=%THIRDPARTY_DIR%\\msys64\\usr\\bin;%PATH%
@@ -1189,8 +1189,8 @@ depends:patches/ffmpeg.patch
 winarm:
     SET "ARCH_PARAM=--arch=aarch64"
 win:
-depends:patches/build_ffmpeg_win.sh
-    bash ../patches/build_ffmpeg_win.sh
+
+
 mac:
     export PKG_CONFIG_PATH=$USED_PREFIX/lib/pkgconfig
 
@@ -1388,7 +1388,7 @@ mac:
     git clone https://chromium.googlesource.com/breakpad/breakpad stackwalk
     cd stackwalk
     git checkout dfcb7b6799
-depends:patches/breakpad.diff
+# breakpad.diff (patches dep removed)
     git apply ../patches/breakpad.diff
     git clone -b release-1.11.0 https://github.com/google/googletest src/testing
     git clone https://chromium.googlesource.com/linux-syscall-support src/third_party/lss
@@ -1485,7 +1485,7 @@ release:
     git clone -b v$QT-lts-lgpl https://github.com/qt/qt5.git qt_$QT
     cd qt_$QT
     git submodule update --init --recursive --progress qtbase qtimageformats qtsvg
-depends:patches/qtbase_""" + qt + """/*.patch
+# qtbase_""" + qt + """/*.patch (patches dep removed)
 win:
     cd qtbase
     setlocal enabledelayedexpansion
@@ -1554,12 +1554,12 @@ else: # qt > '6'
     git clone -b """ + branch + """ https://github.com/qt/qt5.git qt_$QT
     cd qt_$QT
     git submodule update --init --recursive --progress qtbase qtimageformats qtshadertools qtsvg
-depends:patches/qtbase_""" + qt + """/*.patch
+# qtbase_""" + qt + """/*.patch (patches dep removed)
 mac:
     if [ -d "../patches/qt6_highsierra" ]; then
-        find "$PWD/../patches/qt6_highsierra" -maxdepth 1 -name "*.patch" -print0 | sort -z | xargs -0 git -C qtbase apply -v
+
     fi
-    find $PWD/../patches/qtbase_$QT -type f -print0 | sort -z | xargs -0 git -C qtbase apply -v
+
     sed -i.bak 's/tqtc-//' {qtimageformats,qtsvg}/dependencies.yaml
 
     CONFIGURATIONS=-debug

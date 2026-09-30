@@ -156,14 +156,10 @@ cd ../..
 rm -rf Implib.so
 EOF
 
-FROM builder AS patches
+FROM builder AS my_dummy_patches
 RUN <<EOF
-git init patches
-cd patches
-git remote add origin https://github.com/desktop-app/patches.git
-git fetch --depth=1 origin 27efa67b60881c52b112cf924d705e573d03a0ab
-git reset --hard FETCH_HEAD
-rm -rf .git
+mkdir patches
+# Intentionally omitting patches checkout since it was deleted
 EOF
 
 FROM builder AS zlib
@@ -863,7 +859,7 @@ cd ..
 rm -rf libxkbcommon
 EOF
 
-FROM patches AS qt
+FROM my_dummy_patches AS qt
 COPY --link --from=zlib /usr/src/zlib-cache /
 COPY --link --from=lcms2 /usr/src/lcms2-cache /
 COPY --link --from=mozjpeg /usr/src/mozjpeg-cache /
@@ -884,8 +880,8 @@ git clone -b v$QT --depth=1 https://github.com/qt/qt5.git
 cd qt5
 git submodule update --init --recursive --depth=1 \
 	qtbase qtdeclarative qtwayland qtimageformats qtsvg qtshadertools
-find $PWD/../patches/qtbase_$QT -type f -print0 | sort -z | xargs -r0 git -C qtbase apply
-find $PWD/../patches/qtwayland_$QT -type f -print0 | sort -z | xargs -r0 git -C qtwayland apply
+
+
 cmake -B build . \
 	-DCMAKE_INSTALL_PREFIX=/usr/local \
 	-DBUILD_SHARED_LIBS=OFF \
@@ -1043,9 +1039,9 @@ COPY --link --from=webrtc /usr/src/webrtc-cache /
 COPY --link --from=ada /usr/src/ada-cache /
 COPY --link --from=tde2e /usr/src/tde2e-cache /
 
-COPY --link --from=patches /usr/src/patches patches
+
 RUN <<EOF
-patch -p1 -d /usr/lib64/gobject-introspection -i $PWD/patches/gobject-introspection.patch
+
 rm -rf patches
 EOF
 

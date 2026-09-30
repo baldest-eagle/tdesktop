@@ -69,6 +69,13 @@ static_assert(sizeof(ImageUniforms) == 16);
 
 [[nodiscard]] bool UseExpandForCamera(QSize original, QSize viewport) {
 	using namespace ::Media::Streaming;
+	// Do not expand if original is portrait and viewport is landscape, or vice-versa,
+	// to prevent excessive cropping of faces in multi-pin scenarios.
+	const bool originalIsPortrait = original.height() > original.width();
+	const bool viewportIsPortrait = viewport.height() > viewport.width();
+	if (originalIsPortrait != viewportIsPortrait) {
+		return false;
+	}
 	return DecideFrameResize(viewport, original).expanding;
 }
 

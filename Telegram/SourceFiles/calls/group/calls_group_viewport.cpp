@@ -1055,11 +1055,14 @@ void Viewport::setTileGeometry(not_null<VideoTile*> tile, QRect geometry) {
 	const auto kMedium = style::ConvertScale(540);
 	const auto kSmall = style::ConvertScale(240);
 	const auto &endpoint = tile->endpoint();
+	const auto isPinnedTile = isPinned(endpoint);
 	const auto forceThumbnailQuality = !wide()
 		&& !videoStream()
-		&& (ranges::count(_tiles, false, &VideoTile::hidden) > 1);
+		&& (ranges::count(_tiles, false, &VideoTile::hidden) > 1)
+		&& !isPinnedTile;
 	const auto forceFullQuality = videoStream()
-		|| (wide() && (tile.get() == _large));
+		|| (wide() && (tile.get() == _large))
+		|| isPinnedTile;
 	const auto quality = forceThumbnailQuality
 		? VideoQuality::Thumbnail
 		: (forceFullQuality || min >= kMedium)
