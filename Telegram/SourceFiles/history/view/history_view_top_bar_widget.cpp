@@ -1561,6 +1561,7 @@ void TopBarWidget::searchEnableJumpToDate(bool enable) {
 		_jumpToDate.create(
 			this,
 			object_ptr<Ui::IconButton>(this, st::dialogsCalendarTopBar));
+		_jumpToDate->entity()->setAccessibleName(tr::lng_sr_search_date(tr::now));
 		_jumpToDate->toggle(false, anim::type::instant);
 		_jumpToDate->setUpdatedCallback([=](float64) {
 			updateChooseFromUserGeometry();
@@ -1628,6 +1629,7 @@ void TopBarWidget::searchEnableChooseFromUser(bool enable, bool visible) {
 		_chooseFromUser.create(
 			this,
 			object_ptr<Ui::IconButton>(this, st::dialogsSearchFromTopBar));
+		_chooseFromUser->entity()->setAccessibleName(tr::lng_search_messages_from(tr::now));
 		_chooseFromUser->toggle(visible, anim::type::instant);
 		_chooseFromUser->entity()->clicks(
 		) | rpl::to_empty | rpl::start_to_stream(
