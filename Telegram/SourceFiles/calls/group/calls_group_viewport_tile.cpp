@@ -277,3 +277,15 @@ void Viewport::VideoTile::setup(rpl::producer<bool> pinned) {
 }
 
 } // namespace Calls::Group
+
+void Viewport::VideoTile::setHidden(bool hidden) {
+	_hidden = hidden;
+	if (hidden) {
+		_geometry = QRect();
+		_animation = TileAnimation();
+		_topControlsShownAnimation.stop();
+		_topControlsShown = false;
+		_pinned = false;
+		_quality = std::nullopt;
+	}
+}

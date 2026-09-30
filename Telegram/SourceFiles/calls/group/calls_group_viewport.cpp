@@ -1359,3 +1359,22 @@ rpl::producer<QString> MuteButtonTooltip(not_null<GroupCall*> call) {
 }
 
 } // namespace Calls::Group
+
+bool Viewport::isHidden(const VideoEndpoint &endpoint) const {
+	for (const auto &tile : _tiles) {
+		if (tile->endpoint() == endpoint) {
+			return tile->hidden();
+		}
+	}
+	return false;
+}
+
+void Viewport::toggleHidden(const VideoEndpoint &endpoint, bool hidden) {
+	for (const auto &tile : _tiles) {
+		if (tile->endpoint() == endpoint) {
+			tile->setHidden(hidden);
+			updateTilesGeometry();
+			return;
+		}
+	}
+}

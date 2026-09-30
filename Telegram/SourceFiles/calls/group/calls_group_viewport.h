@@ -101,6 +101,8 @@ public:
 	[[nodiscard]] rpl::producer<int> gridPageValue() const;
 	[[nodiscard]] rpl::producer<int> gridPageCountValue() const;
 	void togglePin(const VideoEndpoint &endpoint, bool pinned);
+	void toggleHidden(const VideoEndpoint &endpoint, bool hidden);
+	[[nodiscard]] bool isHidden(const VideoEndpoint &endpoint) const;
 	[[nodiscard]] bool isPinned(const VideoEndpoint &endpoint) const;
 	[[nodiscard]] const std::vector<VideoEndpoint> &pinnedEndpoints() const;
 	[[nodiscard]] int tilesCount() const;
