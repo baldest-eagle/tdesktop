@@ -1746,7 +1746,7 @@ void Panel::promptPinTargetScreen(const VideoEndpoint &endpoint) {
 				box.get(),
 				rpl::single(isPinnedS0
 					? u"Unpin from Screen 1 (Stage Window)"_q
-					: u"Pin to Screen 1 (Stage Window)"_q),
+					: u"Add to Screen 1 (Stage Window)"_q),
 				st::defaultSettingsButton));
 		btn1->toggleOn(rpl::single(isPinnedS0), true);
 		btn1->setClickedCallback([=] {
@@ -1758,12 +1758,29 @@ void Panel::promptPinTargetScreen(const VideoEndpoint &endpoint) {
 			}
 		});
 
+		if (!isPinnedS0) {
+			box->addRow(
+				object_ptr<Ui::SettingsButton>(
+					box.get(),
+					rpl::single(u"Replace Screen 1 (Stage Window)"_q),
+					st::defaultSettingsButton)
+			)->setClickedCallback([=] {
+				box->closeBox();
+				if (_displayCoordinator) {
+					for (const auto &ep : _displayCoordinator->pinnedEndpoints(0)) {
+						unpinFromScreen(0, ep);
+					}
+				}
+				pinToScreen(0, endpoint);
+			});
+		}
+
 		const auto btn2 = box->addRow(
 			object_ptr<Ui::SettingsButton>(
 				box.get(),
 				rpl::single(isPinnedS1
 					? u"Unpin from Screen 2 (2nd Monitor)"_q
-					: u"Pin to Screen 2 (2nd Monitor)"_q),
+					: u"Add to Screen 2 (2nd Monitor)"_q),
 				st::defaultSettingsButton));
 		btn2->toggleOn(rpl::single(isPinnedS1), true);
 		btn2->setClickedCallback([=] {
@@ -1774,6 +1791,23 @@ void Panel::promptPinTargetScreen(const VideoEndpoint &endpoint) {
 				pinToScreen(1, endpoint);
 			}
 		});
+
+		if (!isPinnedS1) {
+			box->addRow(
+				object_ptr<Ui::SettingsButton>(
+					box.get(),
+					rpl::single(u"Replace Screen 2 (2nd Monitor)"_q),
+					st::defaultSettingsButton)
+			)->setClickedCallback([=] {
+				box->closeBox();
+				if (_displayCoordinator) {
+					for (const auto &ep : _displayCoordinator->pinnedEndpoints(1)) {
+						unpinFromScreen(1, ep);
+					}
+				}
+				pinToScreen(1, endpoint);
+			});
+		}
 
 		box->addButton(tr::lng_close(), [=] { box->closeBox(); });
 	});
