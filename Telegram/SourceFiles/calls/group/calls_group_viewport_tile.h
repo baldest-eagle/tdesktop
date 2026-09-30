@@ -89,6 +89,7 @@ public:
 		QRect geometry,
 		TileAnimation animation = TileAnimation());
 	void hide();
+	void setHidden(bool hidden);
 	void toggleTopControlsShown(bool shown);
 	bool updateRequestedQuality(VideoQuality quality);
 

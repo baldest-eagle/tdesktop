@@ -164,6 +164,13 @@ void DisplayCoordinator::createDisplayWindow(int displayIndex, QScreen *screen) 
 }
 
 void DisplayCoordinator::destroyDisplayWindow(int displayIndex) {
+	auto it_temp = _displays.find(displayIndex);
+	if (it_temp != _displays.end() && it_temp->second.viewport) {
+		auto endpoints = pinnedEndpoints(displayIndex);
+		for (const auto &ep : endpoints) {
+			unpinFromScreen(displayIndex, ep);
+		}
+	}
 	auto it = _displays.find(displayIndex);
 	if (it == _displays.end()) {
 		_routedEndpoints.erase(displayIndex);
