@@ -778,30 +778,11 @@ BottomBar::BottomBar(not_null<Ui::RpWidget*> parent, bool fastShowChooseFrom)
 		_current = _current.current() + way;
 	}, lifetime());
 
-	tr::lng_shortcuts_media_previous(
-	) | rpl::start_with_next([=](const QString &text) {
-		_previous->setAccessibleName(text);
-	}, _previous->lifetime());
-
-	tr::lng_shortcuts_media_next(
-	) | rpl::start_with_next([=](const QString &text) {
-		_next->setAccessibleName(text);
-	}, _next->lifetime());
-
-	tr::lng_sr_search_date(
-	) | rpl::start_with_next([=](const QString &text) {
-		_jumpToDate->setAccessibleName(text);
-	}, _jumpToDate->lifetime());
-
-	tr::lng_search_messages_from(
-	) | rpl::start_with_next([=](const QString &text) {
-		_chooseFromUser->setAccessibleName(text);
-	}, _chooseFromUser->lifetime());
-
-	tr::lng_sr_message_list(
-	) | rpl::start_with_next([=](const QString &text) {
-		_showList->setAccessibleName(text);
-	}, _showList->lifetime());
+	_previous->setAccessibleName(tr::lng_shortcuts_media_previous(tr::now));
+	_next->setAccessibleName(tr::lng_shortcuts_media_next(tr::now));
+	_jumpToDate->setAccessibleName(tr::lng_sr_search_date(tr::now));
+	_chooseFromUser->setAccessibleName(tr::lng_search_messages_from(tr::now));
+	_showList->setAccessibleName(tr::lng_sr_message_list(tr::now));
 }
 
 bool BottomBar::handleKeyPress(not_null<QKeyEvent*> e) {
