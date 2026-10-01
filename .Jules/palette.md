@@ -1,3 +1,3 @@
-## 2024-05-18 - Reactive ARIA bindings in Qt for Telegram Desktop
-**Learning:** Screen reader labels (`setAccessibleName()`) in tdesktop shouldn't be statically assigned during widget initialization since they won't automatically respond to runtime application language changes.
-**Action:** Always wrap `setAccessibleName` assignments in a reactive data stream binding `rpl::start_with_next([=]...` passing the widget's lifetime to ensure the accessible label stays in sync with dynamic localization changes.
+## 2024-05-15 - ARIA Labels for Icon-Only Close Buttons
+**Learning:** Icon-only close buttons instantiated via `Ui::CreateChild<Ui::IconButton>` across various custom dialog boxes lacked accessible names (`setAccessibleName`). This meant screen readers would simply announce them as "button," failing to communicate their purpose to users.
+**Action:** When creating icon-only buttons (like `st::boxTitleClose`), always explicitly assign an accessible name using reactive data streams (`tr::lng_close() | rpl::start_with_next(...)`) bound to the button's lifetime. This ensures the label is not only present but stays in sync with dynamic localization changes.

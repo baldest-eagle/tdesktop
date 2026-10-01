@@ -183,6 +183,10 @@ void AddPremiumTopBarWithDefaultTitleBar(
 		const auto close = Ui::CreateChild<Ui::IconButton>(
 			closeTopBar.get(),
 			st::startGiveawayBoxTitleClose);
+		tr::lng_close()
+			| rpl::start_with_next([=](const QString &text) {
+				close->setAccessibleName(text);
+			}, close->lifetime());
 		close->setClickedCallback([=] { box->closeBox(); });
 		closeTopBar->widthValue(
 		) | rpl::on_next([=](int w) {

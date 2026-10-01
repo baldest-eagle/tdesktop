@@ -918,6 +918,10 @@ void GiftCodeBox(
 	const auto close = Ui::CreateChild<Ui::IconButton>(
 		box.get(),
 		st::boxTitleClose);
+	tr::lng_close()
+		| rpl::start_with_next([=](const QString &text) {
+			close->setAccessibleName(text);
+		}, close->lifetime());
 	close->setClickedCallback([=] {
 		box->closeBox();
 	});
@@ -1048,6 +1052,10 @@ void GiftCodePendingBox(
 	const auto close = Ui::CreateChild<Ui::IconButton>(
 		box.get(),
 		st::boxTitleClose);
+	tr::lng_close()
+		| rpl::start_with_next([=](const QString &text) {
+			close->setAccessibleName(text);
+		}, close->lifetime());
 	const auto closeCallback = [=] { box->closeBox(); };
 	close->setClickedCallback(closeCallback);
 	box->widthValue(
