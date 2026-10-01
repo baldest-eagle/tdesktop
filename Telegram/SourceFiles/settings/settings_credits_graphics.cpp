@@ -2397,6 +2397,10 @@ void GenericCreditsEntryBody(
 		const auto close = Ui::CreateChild<Ui::IconButton>(
 			content,
 			st::boxTitleClose);
+		tr::lng_close()
+			| rpl::start_with_next([=](const QString &text) {
+				close->setAccessibleName(text);
+			}, close->lifetime());
 		close->setClickedCallback([=] { box->closeBox(); });
 		content->widthValue() | rpl::on_next([=](int) {
 			close->moveToRight(0, 0);
@@ -3713,6 +3717,10 @@ void AddUniqueCloseMoreButton(
 	const auto close = Ui::CreateChild<Ui::IconButton>(
 		box,
 		st::uniqueCloseButton);
+	tr::lng_close()
+		| rpl::start_with_next([=](const QString &text) {
+			close->setAccessibleName(text);
+		}, close->lifetime());
 	const auto menu = fillMenu
 		? Ui::CreateChild<Ui::IconButton>(box, st::uniqueMenuButton)
 		: nullptr;

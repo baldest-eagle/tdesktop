@@ -410,6 +410,10 @@ void ShowAgeVerification(
 		const auto close = Ui::CreateChild<Ui::IconButton>(
 			box.get(),
 			st::boxTitleClose);
+		tr::lng_close()
+			| rpl::start_with_next([=](const QString &text) {
+				close->setAccessibleName(text);
+			}, close->lifetime());
 		close->setClickedCallback([=] {
 			box->closeBox();
 		});

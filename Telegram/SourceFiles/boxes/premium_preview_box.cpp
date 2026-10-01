@@ -1004,6 +1004,10 @@ void PreviewBox(
 	const auto close = Ui::CreateChild<Ui::IconButton>(
 		buttonsParent,
 		st::settingsPremiumTopBarClose);
+	tr::lng_close()
+		| rpl::start_with_next([=](const QString &text) {
+			close->setAccessibleName(text);
+		}, close->lifetime());
 	close->setClickedCallback([=] { box->closeBox(); });
 
 	const auto gifts = (state->selected.current() == PremiumFeature::Gifts);
