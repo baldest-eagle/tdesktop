@@ -1697,16 +1697,24 @@ void Panel::pinToScreen(int screenIndex, const VideoEndpoint &endpoint) {
 	if (!endpoint || !_displayCoordinator) {
 		return;
 	}
-	const auto track = _members->lookupTrack(endpoint);
-	if (!track) {
+	const auto &tracks = _call->activeVideoTracks();
+	const auto it = tracks.find(endpoint);
+	if (it == tracks.end()) {
+		return;
+	}
+	const auto row = _members ? _members->lookupRow(GroupCall::TrackPeer(it->second)) : nullptr;
+	if (!row) {
 		return;
 	}
 	_displayCoordinator->pinToScreen(
 		screenIndex,
 		endpoint,
-		track,
-		_members->trackSizeValue(endpoint),
-		endpoint.peer == _call->peer());
+		VideoTileTrack{
+			GroupCall::TrackPointer(it->second),
+			row,
+			not_null<PeerData*>(endpoint.peer) },
+		GroupCall::TrackSizeValue(it->second),
+		endpoint.peer == _call->joinAs());
 
 	if (_viewport) {
 		_viewport->toggleHidden(endpoint, true);
