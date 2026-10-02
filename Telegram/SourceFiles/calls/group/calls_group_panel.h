@@ -117,6 +117,8 @@ public:
 
 	void pinToScreen(int screenIndex, const VideoEndpoint &endpoint);
 	void unpinFromScreen(int screenIndex, const VideoEndpoint &endpoint);
+	void hideFromGrids(const VideoEndpoint &endpoint, bool alsoMain);
+	void showInGrids(const VideoEndpoint &endpoint);
 
 	rpl::lifetime &lifetime();
 

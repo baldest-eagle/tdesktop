@@ -426,7 +426,7 @@ void Viewport::startLargeChangeAnimation() {
 
 Viewport::Layout Viewport::applyLarge(Layout layout) const {
 	auto &list = layout.list;
-	if (!_large) {
+	if (!_large || _large->hiddenByScreen()) {
 		return layout;
 	}
 	const auto i = ranges::find(list, _large, &Geometry::tile);
@@ -535,6 +535,9 @@ Viewport::Layout Viewport::countWide(int outerWidth, int outerHeight) const {
 			for (const auto &tile : _tiles) {
 				if (tile->endpoint() == pinned) {
 					const auto video = tile.get();
+					if (video->hiddenByScreen()) {
+						break;
+					}
 					const auto size = video->trackOrUserpicSize();
 					if (!size.isEmpty()) {
 						sizes.push_back(Geometry{ video, size });
@@ -549,6 +552,9 @@ Viewport::Layout Viewport::countWide(int outerWidth, int outerHeight) const {
 		auto unpinnedTiles = std::vector<not_null<VideoTile*>>();
 		for (const auto &tile : _tiles) {
 			const auto video = tile.get();
+			if (video->hiddenByScreen()) {
+				continue;
+			}
 			const auto size = video->trackOrUserpicSize();
 			if (!size.isEmpty()) {
 				unpinnedTiles.push_back(video);
@@ -941,6 +947,9 @@ void Viewport::updateTilesGeometryNarrow(int outerWidth) {
 	sizes.reserve(_tiles.size());
 	for (const auto &tile : _tiles) {
 		const auto video = tile.get();
+		if (video->hiddenByScreen()) {
+			continue;
+		}
 		const auto size = video->trackOrUserpicSize();
 		if (size.isEmpty()) {
 			video->hide();
@@ -1003,6 +1012,9 @@ void Viewport::updateTilesGeometryColumn(int outerWidth) {
 	const auto y = -_scrollTop;
 	auto top = 0;
 	const auto layoutNext = [&](not_null<VideoTile*> tile) {
+		if (tile->hiddenByScreen()) {
+			return;
+		}
 		const auto size = tile->trackOrUserpicSize();
 		const auto shown = !size.isEmpty() && _large && tile != _large;
 		const auto height = st::groupCallNarrowVideoHeight;
@@ -1049,6 +1061,9 @@ void Viewport::updateTilesGeometryColumn(int outerWidth) {
 }
 
 void Viewport::setTileGeometry(not_null<VideoTile*> tile, QRect geometry) {
+	if (tile->hiddenByScreen()) {
+		return;
+	}
 	tile->setGeometry(geometry);
 
 	const auto min = std::min(geometry.width(), geometry.height());
@@ -1355,8 +1370,6 @@ rpl::producer<QString> MuteButtonTooltip(not_null<GroupCall*> call) {
 	}) | rpl::flatten_latest();
 }
 
-} // namespace Calls::Group
-
 bool Viewport::isHidden(const VideoEndpoint &endpoint) const {
 	for (const auto &tile : _tiles) {
 		if (tile->endpoint() == endpoint) {
@@ -1368,10 +1381,25 @@ bool Viewport::isHidden(const VideoEndpoint &endpoint) const {
 
 void Viewport::toggleHidden(const VideoEndpoint &endpoint, bool hidden) {
 	for (const auto &tile : _tiles) {
-		if (tile->endpoint() == endpoint) {
-			tile->setHidden(hidden);
-			updateTilesGeometry();
-			return;
+		if (tile->endpoint() != endpoint) {
+			continue;
 		}
+		tile->setHiddenByScreen(hidden);
+		if (hidden) {
+			_hiddenChanges.fire(VideoEndpoint(endpoint));
+		} else {
+			_hiddenReleased.fire(VideoEndpoint(endpoint));
+		}
+		updateTilesGeometry();
+		return;
 	}
 }
+
+rpl::producer<VideoEndpoint> Viewport::hiddenChanges() const {
+	return rpl::merge(
+		_hiddenChanges.events(),
+		_hiddenReleased.events()
+	);
+}
+
+} // namespace Calls::Group

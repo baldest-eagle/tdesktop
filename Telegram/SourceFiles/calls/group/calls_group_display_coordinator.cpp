@@ -18,6 +18,8 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 
 #include "styles/style_calls.h"
 
+#include <gsl/gsl>
+
 namespace Calls::Group {
 namespace {
 
@@ -109,7 +111,7 @@ void DisplayCoordinator::createDisplayWindow(int displayIndex, QScreen *screen) 
 		_displays.erase(displayIndex);
 		return;
 	}
-	Ui::Platform::EnsureAppWindow(display.widget.get());
+	// Ui::Platform::EnsureAppWindow(display.widget.get());
 
 	display.widget->setWindowTitle(RoleText(display.role));
 	display.widget->setAttribute(Qt::WA_OpaquePaintEvent);
@@ -164,18 +166,20 @@ void DisplayCoordinator::createDisplayWindow(int displayIndex, QScreen *screen) 
 }
 
 void DisplayCoordinator::destroyDisplayWindow(int displayIndex) {
-	auto it_temp = _displays.find(displayIndex);
-	if (it_temp != _displays.end() && it_temp->second.viewport) {
-		auto endpoints = pinnedEndpoints(displayIndex);
-		for (const auto &ep : endpoints) {
-			unpinFromScreen(displayIndex, ep);
-		}
+	if (_destroying.contains(displayIndex)) {
+		return;
 	}
+	const auto guard = gsl::finally([&] {
+		_destroying.erase(displayIndex);
+	});
+	_destroying.insert(displayIndex);
+
 	auto it = _displays.find(displayIndex);
 	if (it == _displays.end()) {
 		_routedEndpoints.erase(displayIndex);
 		return;
 	}
+	auto endpoints = pinnedEndpoints(displayIndex);
 	if (it->second.viewport) {
 		it->second.viewport.reset();
 	}
@@ -185,6 +189,9 @@ void DisplayCoordinator::destroyDisplayWindow(int displayIndex) {
 	}
 	_displays.erase(it);
 	_routedEndpoints.erase(displayIndex);
+	for (const auto &endpoint : endpoints) {
+		_pinnedRemoved.fire(VideoEndpoint(endpoint));
+	}
 	_displayCountChanged.fire(static_cast<int>(_displays.size()));
 }
 
@@ -498,6 +505,10 @@ rpl::producer<int> DisplayCoordinator::displayCountChanged() const {
 
 rpl::producer<VideoEndpoint> DisplayCoordinator::qualityRequests() const {
 	return _qualityRequests.events();
+}
+
+rpl::producer<VideoEndpoint> DisplayCoordinator::pinnedRemoved() const {
+	return _pinnedRemoved.events();
 }
 
 QString DisplayRoleText(DisplayRole role) {

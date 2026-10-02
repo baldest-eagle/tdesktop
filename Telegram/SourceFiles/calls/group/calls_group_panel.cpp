@@ -585,7 +585,7 @@ void Panel::showAndActivate() {
 	if (state & Qt::WindowMinimized) {
 		window()->setWindowState(state & ~Qt::WindowMinimized);
 	}
-	Ui::Platform::RestoreWindow(window());
+	// Ui::Platform::RestoreWindow(window());
 	window()->raise();
 	window()->activateWindow();
 	window()->setFocus();
@@ -1436,6 +1436,12 @@ void Panel::setupMembers() {
 	) | rpl::on_next([=](const VideoEndpoint &endpoint) {
 		_call->requestVideoQuality(endpoint, VideoQuality::Full);
 	}, _callLifetime);
+
+	// A destroyed display must give its feeds back to the grids
+	_displayCoordinator->pinnedRemoved(
+	) | rpl::on_next([=](const VideoEndpoint &endpoint) {
+		showInGrids(endpoint);
+	}, _callLifetime);
 	_viewport->mouseInsideValue(
 	) | rpl::filter([=] {
 		return !_rtmpFull;
@@ -1702,10 +1708,14 @@ void Panel::pinToScreen(int screenIndex, const VideoEndpoint &endpoint) {
 	if (it == tracks.end()) {
 		return;
 	}
-	const auto row = _members ? _members->lookupRow(GroupCall::TrackPeer(it->second)) : nullptr;
+	if (!_members) {
+		return;
+	}
+	const auto row = _members->lookupRow(GroupCall::TrackPeer(it->second));
 	if (!row) {
 		return;
 	}
+	const auto self = (endpoint.peer == _call->joinAs());
 	_displayCoordinator->pinToScreen(
 		screenIndex,
 		endpoint,
@@ -1714,9 +1724,20 @@ void Panel::pinToScreen(int screenIndex, const VideoEndpoint &endpoint) {
 			row,
 			not_null<PeerData*>(endpoint.peer) },
 		GroupCall::TrackSizeValue(it->second),
-		endpoint.peer == _call->joinAs());
+		self);
 
-	if (_viewport) {
+	hideFromGrids(endpoint, self);
+}
+
+void Panel::unpinFromScreen(int screenIndex, const VideoEndpoint &endpoint) {
+	if (_displayCoordinator) {
+		_displayCoordinator->unpinFromScreen(screenIndex, endpoint);
+	}
+	showInGrids(endpoint);
+}
+
+void Panel::hideFromGrids(const VideoEndpoint &endpoint, bool alsoMain) {
+	if (alsoMain && _viewport) {
 		_viewport->toggleHidden(endpoint, true);
 	}
 	if (_members && _members->viewport()) {
@@ -1724,10 +1745,7 @@ void Panel::pinToScreen(int screenIndex, const VideoEndpoint &endpoint) {
 	}
 }
 
-void Panel::unpinFromScreen(int screenIndex, const VideoEndpoint &endpoint) {
-	if (_displayCoordinator) {
-		_displayCoordinator->unpinFromScreen(screenIndex, endpoint);
-	}
+void Panel::showInGrids(const VideoEndpoint &endpoint) {
 	if (_viewport) {
 		_viewport->toggleHidden(endpoint, false);
 	}
