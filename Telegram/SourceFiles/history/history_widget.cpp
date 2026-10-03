@@ -1405,6 +1405,10 @@ void HistoryWidget::initAiButton() {
 
 void HistoryWidget::initSendAsFileButton() {
 	_sendAsFile->hide();
+	tr::lng_send_file(
+	) | rpl::start_with_next([=](const QString &text) {
+		_sendAsFile->setAccessibleName(text);
+	}, _sendAsFile->lifetime());
 	_sendAsFile->setClickedCallback([=] {
 		if (_sendAsFileTooltipManager) {
 			_sendAsFileTooltipManager->hideAndRemember();
