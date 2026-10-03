@@ -3835,10 +3835,7 @@ void ComposeControls::initSendAsFileButton() {
 		return;
 	}
 	_sendAsFile->hide();
-	tr::lng_send_file(
-	) | rpl::start_with_next([=](const QString &text) {
-		_sendAsFile->setAccessibleName(text);
-	}, _sendAsFile->lifetime());
+	_sendAsFile->setAccessibleName(tr::lng_send_file(tr::now));
 	_sendAsFile->setClickedCallback([=] {
 		if (_sendAsFileTooltipManager) {
 			_sendAsFileTooltipManager->hideAndRemember();
