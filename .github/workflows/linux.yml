@@ -50,6 +50,7 @@ jobs:
       matrix:
         defines:
           - ""
+      fail-fast: false
 
     env:
       UPLOAD_ARTIFACT: "true"

@@ -66,6 +66,7 @@ jobs:
       DISABLE_CRASH_REPORTS: ${{ github.ref == 'refs/heads/nightly' && 'ON' || 'OFF' }}
       SKIP_RELEASE_LIBS: ${{ github.ref != 'refs/heads/nightly' && 'skip-release' || '' }}
       CACHE_CONFIG: ${{ github.ref == 'refs/heads/nightly' && 'rel' || '' }}
+      fail-fast: false
 
     defaults:
       run:
@@ -74,7 +75,7 @@ jobs:
     steps:
       - name: Prepare directories.
         run: |
-          mkdir %userprofile%\TBuild\Libraries
+          if not exist "%userprofile%\TBuild\Libraries" mkdir "%userprofile%\TBuild\Libraries"
           mklink /d %GITHUB_WORKSPACE%\TBuild %userprofile%\TBuild
           echo TBUILD=%GITHUB_WORKSPACE%\TBuild>>%GITHUB_ENV%
           echo LibrariesPath=%GITHUB_WORKSPACE%\TBuild\Libraries${{ matrix.arch == 'x64' && '\win64' || '' }}>>%GITHUB_ENV%
