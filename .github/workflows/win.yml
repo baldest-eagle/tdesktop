@@ -56,6 +56,7 @@ jobs:
             qt: ""
           - arch: x64_x86
             qt: qt6
+      fail-fast: false
 
     env:
       UPLOAD_ARTIFACT: "true"
@@ -66,7 +67,6 @@ jobs:
       DISABLE_CRASH_REPORTS: ${{ github.ref == 'refs/heads/nightly' && 'ON' || 'OFF' }}
       SKIP_RELEASE_LIBS: ${{ github.ref != 'refs/heads/nightly' && 'skip-release' || '' }}
       CACHE_CONFIG: ${{ github.ref == 'refs/heads/nightly' && 'rel' || '' }}
-      fail-fast: false
 
     defaults:
       run:
