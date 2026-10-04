@@ -1405,6 +1405,7 @@ void HistoryWidget::initAiButton() {
 
 void HistoryWidget::initSendAsFileButton() {
 	_sendAsFile->hide();
+	_sendAsFile->setAccessibleName(tr::lng_send_file(tr::now));
 	_sendAsFile->setClickedCallback([=] {
 		if (_sendAsFileTooltipManager) {
 			_sendAsFileTooltipManager->hideAndRemember();

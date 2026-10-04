@@ -50,6 +50,7 @@ jobs:
       matrix:
         defines:
           - ""
+      fail-fast: false
 
     env:
       UPLOAD_ARTIFACT: "true"
@@ -201,7 +202,8 @@ jobs:
         run: |
           cd out/Debug
           mkdir artifact
-          mv {Telegram,Updater} artifact/
+          mv Telegram artifact/
+          if [ -f "Updater" ]; then mv Updater artifact/; fi
       - uses: actions/upload-artifact@v7
         if: env.UPLOAD_ARTIFACT == 'true'
         name: Upload artifact.
