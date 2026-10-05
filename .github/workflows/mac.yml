@@ -68,7 +68,7 @@ jobs:
 
       - name: First set up.
         run: |
-          sudo chown -R `whoami`:admin /usr/local/share
+          if [ -d /usr/local/share ]; then sudo chown -R `whoami`:admin /usr/local/share; fi
 
           brew update
           brew upgrade || true
