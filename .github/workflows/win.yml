@@ -279,7 +279,7 @@ jobs:
         if: (env.UPLOAD_ARTIFACT == 'true') || (github.ref == 'refs/heads/nightly')
         run: |
           set OUT=%TBUILD%\%REPO_NAME%\out\%BUILD_CONFIG%
-          mkdir artifact
+          if not exist "artifact" mkdir "artifact"
           move %OUT%\Telegram.exe artifact/
           if "%DISABLE_AUTOUPDATE%"=="OFF" move %OUT%\Updater.exe artifact/
       - uses: actions/upload-artifact@v7

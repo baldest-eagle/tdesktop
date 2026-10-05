@@ -135,7 +135,7 @@ jobs:
         if: env.UPLOAD_ARTIFACT == 'true'
         run: |
           cd $REPO_NAME/out/$BUILD_CONFIG
-          mkdir artifact
+          mkdir -p artifact
           if [ -e Telegram.app ]; then mv Telegram.app artifact/; fi
           if [ "$DISABLE_AUTOUPDATE" == "OFF" ]; then if [ -e Updater ]; then mv Updater artifact/; fi; fi
       - uses: actions/upload-artifact@v7
