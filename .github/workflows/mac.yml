@@ -68,7 +68,7 @@ jobs:
 
       - name: First set up.
         run: |
-          sudo chown -R `whoami`:admin /usr/local/share
+          if [ -d /usr/local/share ]; then sudo chown -R `whoami`:admin /usr/local/share; fi
 
           brew update
           brew upgrade || true
@@ -79,7 +79,7 @@ jobs:
 
           sudo xcode-select -s /Applications/Xcode.app/Contents/Developer
 
-          sudo sed -i '' '/CMAKE_${lang}_FLAGS_DEBUG_INIT/s/ -g//' /opt/homebrew/share/cmake/Modules/Compiler/GNU.cmake
+          if [ -f /opt/homebrew/share/cmake/Modules/Compiler/GNU.cmake ]; then sudo sed -i '' '/CMAKE_${lang}_FLAGS_DEBUG_INIT/s/ -g//' /opt/homebrew/share/cmake/Modules/Compiler/GNU.cmake; fi
 
       - name: Libraries cache.
         id: cache-libs
@@ -135,9 +135,9 @@ jobs:
         if: env.UPLOAD_ARTIFACT == 'true'
         run: |
           cd $REPO_NAME/out/$BUILD_CONFIG
-          mkdir artifact
-          mv Telegram.app artifact/
-          if [ "$DISABLE_AUTOUPDATE" == "OFF" ]; then mv Updater artifact/; fi
+          mkdir -p artifact
+          if [ -e Telegram.app ]; then mv Telegram.app artifact/; fi
+          if [ "$DISABLE_AUTOUPDATE" == "OFF" ]; then if [ -e Updater ]; then mv Updater artifact/; fi; fi
       - uses: actions/upload-artifact@v7
         if: env.UPLOAD_ARTIFACT == 'true'
         name: Upload artifact.
