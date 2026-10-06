@@ -74,7 +74,7 @@ jobs:
     steps:
       - name: Prepare directories.
         run: |
-          mkdir %userprofile%\TBuild\Libraries
+          if not exist "%userprofile%\TBuild\Libraries" mkdir "%userprofile%\TBuild\Libraries"
           mklink /d %GITHUB_WORKSPACE%\TBuild %userprofile%\TBuild
           echo TBUILD=%GITHUB_WORKSPACE%\TBuild>>%GITHUB_ENV%
           echo LibrariesPath=%GITHUB_WORKSPACE%\TBuild\Libraries${{ matrix.arch == 'x64' && '\win64' || '' }}>>%GITHUB_ENV%
@@ -279,7 +279,7 @@ jobs:
         if: (env.UPLOAD_ARTIFACT == 'true') || (github.ref == 'refs/heads/nightly')
         run: |
           set OUT=%TBUILD%\%REPO_NAME%\out\%BUILD_CONFIG%
-          mkdir artifact
+          if not exist artifact mkdir artifact
           move %OUT%\Telegram.exe artifact/
           if "%DISABLE_AUTOUPDATE%"=="OFF" move %OUT%\Updater.exe artifact/
       - uses: actions/upload-artifact@v7

@@ -314,6 +314,10 @@ void TranslateBar::setup(not_null<History*> history) {
 		button,
 		st::historyTranslateSettings);
 	settings->setClickedCallback([=] { showMenu(createMenu(settings)); });
+	tr::lng_translate_settings(
+	) | rpl::start_with_next([=](const QString &text) {
+		settings->setAccessibleName(text);
+	}, settings->lifetime());
 
 	const auto updateLabelGeometry = [=] {
 		const auto full = _wrap.width() - icon->width();
