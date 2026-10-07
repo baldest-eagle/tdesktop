@@ -229,6 +229,11 @@ vec4 background() {
 
 [[nodiscard]] bool UseExpandForCamera(QSize original, QSize viewport) {
 	using namespace ::Media::Streaming;
+	const auto originalIsPortrait = original.height() > original.width();
+	const auto viewportIsPortrait = viewport.height() > viewport.width();
+	if (originalIsPortrait != viewportIsPortrait) {
+		return false;
+	}
 	return DecideFrameResize(viewport, original).expanding;
 }
 

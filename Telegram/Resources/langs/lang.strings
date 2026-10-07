@@ -5906,6 +5906,8 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 "lng_search_messages_from" = "Show messages from";
 "lng_search_messages_n_of_amount" = "{n} of {amount}";
 "lng_search_messages_none" = "No results";
+"lng_search_previous" = "Previous result";
+"lng_search_next" = "Next result";
 "lng_search_filter_all" = "All chats";
 "lng_search_filter_private" = "Private chats";
 "lng_search_filter_group" = "Group chats";
@@ -6370,6 +6372,16 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 "lng_group_call_screen_share_audio" = "Share System Audio";
 "lng_group_call_sharing_screen_options" = "Sharing Options";
 "lng_group_call_choose_source" = "Choose Source";
+"lng_group_call_add_camera_to_screen" = "Add Camera to Screen {index}";
+"lng_group_call_replace_camera_on_screen" = "Replace Camera on Screen {index}";
+"lng_group_call_unpin_camera_from_screen" = "Unpin Camera from Screen {index}";
+"lng_group_call_add_screen_to_screen" = "Add Screen to Screen {index}";
+"lng_group_call_replace_screen_on_screen" = "Replace Screen on Screen {index}";
+"lng_group_call_unpin_screen_from_screen" = "Unpin Screen from Screen {index}";
+"lng_group_call_hide_camera_from_grid" = "Hide Camera from Main Grid";
+"lng_group_call_reveal_camera_in_grid" = "Reveal Camera in Main Grid";
+"lng_group_call_hide_screen_from_grid" = "Hide Screen from Main Grid";
+"lng_group_call_reveal_screen_in_grid" = "Reveal Screen in Main Grid";
 "lng_group_call_unmute" = "Unmute";
 "lng_group_call_unmute_sub" = "Hold space bar to temporarily unmute.";
 "lng_group_call_you_are_live" = "You are Live";

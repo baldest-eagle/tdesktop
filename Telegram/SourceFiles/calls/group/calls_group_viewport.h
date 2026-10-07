@@ -101,10 +101,13 @@ public:
 	[[nodiscard]] rpl::producer<int> gridPageValue() const;
 	[[nodiscard]] rpl::producer<int> gridPageCountValue() const;
 	void togglePin(const VideoEndpoint &endpoint, bool pinned);
+	void toggleHidden(const VideoEndpoint &endpoint, bool hidden);
+	[[nodiscard]] bool isHidden(const VideoEndpoint &endpoint) const;
 	[[nodiscard]] bool isPinned(const VideoEndpoint &endpoint) const;
 	[[nodiscard]] const std::vector<VideoEndpoint> &pinnedEndpoints() const;
 	[[nodiscard]] int tilesCount() const;
 	[[nodiscard]] rpl::producer<int> tilesCountChanges() const;
+	[[nodiscard]] rpl::producer<VideoEndpoint> hiddenChanges() const;
 
 	void add(
 		const VideoEndpoint &endpoint,
@@ -252,6 +255,8 @@ private:
 	Selection _pressed;
 	rpl::variable<bool> _mouseInside = false;
 	rpl::event_stream<int> _tilesCountChanges;
+	rpl::event_stream<VideoEndpoint> _hiddenChanges;
+	rpl::event_stream<VideoEndpoint> _hiddenReleased;
 
 	rpl::variable<bool> _gridMode = false;
 	rpl::variable<int> _slotCount = 0;

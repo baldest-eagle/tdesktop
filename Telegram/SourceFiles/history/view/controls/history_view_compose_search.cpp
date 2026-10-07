@@ -708,6 +708,12 @@ BottomBar::BottomBar(not_null<Ui::RpWidget*> parent, bool fastShowChooseFrom)
 	_counter->setAttribute(Qt::WA_TransparentForMouseEvents);
 	_chooseFromUser->setVisible(fastShowChooseFrom);
 
+	_previous->setAccessibleName(tr::lng_search_previous(tr::now));
+	_next->setAccessibleName(tr::lng_search_next(tr::now));
+	_jumpToDate->setAccessibleName(tr::lng_sr_search_date(tr::now));
+	_chooseFromUser->setAccessibleName(tr::lng_search_messages_from(tr::now));
+	_showList->setAccessibleName(tr::lng_sr_message_list(tr::now));
+
 	parent->geometryValue(
 	) | rpl::on_next([=](const QRect &r) {
 		const auto height = st::historyComposeButton.height;

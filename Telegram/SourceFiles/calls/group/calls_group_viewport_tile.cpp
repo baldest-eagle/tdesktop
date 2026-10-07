@@ -97,15 +97,32 @@ bool Viewport::VideoTile::screencast() const {
 void Viewport::VideoTile::setGeometry(
 		QRect geometry,
 		TileAnimation animation) {
-	_hidden = false;
+	if (!_hiddenByScreen) {
+		_hidden = false;
+	}
 	_geometry = geometry;
 	_animation = animation;
 	updateTopControlsPosition();
 }
 
 void Viewport::VideoTile::hide() {
+	if (_hiddenByScreen) {
+		return;
+	}
 	_hidden = true;
 	_quality = std::nullopt;
+}
+
+void Viewport::VideoTile::setHiddenByScreen(bool hidden) {
+	_hiddenByScreen = hidden;
+	_hidden = hidden;
+	if (hidden) {
+		_geometry = QRect();
+		_animation = TileAnimation();
+		_topControlsShownAnimation.stop();
+		_topControlsShown = false;
+		_quality = std::nullopt;
+	}
 }
 
 void Viewport::VideoTile::toggleTopControlsShown(bool shown) {

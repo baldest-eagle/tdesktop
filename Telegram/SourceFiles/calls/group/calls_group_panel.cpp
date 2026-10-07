@@ -1436,6 +1436,11 @@ void Panel::setupMembers() {
 	) | rpl::on_next([=](const VideoEndpoint &endpoint) {
 		_call->requestVideoQuality(endpoint, VideoQuality::Full);
 	}, _callLifetime);
+
+	_displayCoordinator->pinnedRemoved(
+	) | rpl::on_next([=](const VideoEndpoint &endpoint) {
+		showInGrids(endpoint);
+	}, _callLifetime);
 	_viewport->mouseInsideValue(
 	) | rpl::filter([=] {
 		return !_rtmpFull;
@@ -1715,11 +1720,33 @@ void Panel::pinToScreen(int screenIndex, const VideoEndpoint &endpoint) {
 			not_null<PeerData*>(endpoint.peer) },
 		GroupCall::TrackSizeValue(it->second),
 		endpoint.peer == _call->joinAs());
+	hideFromGrids(endpoint, true);
 }
 
 void Panel::unpinFromScreen(int screenIndex, const VideoEndpoint &endpoint) {
 	if (_displayCoordinator) {
 		_displayCoordinator->unpinFromScreen(screenIndex, endpoint);
+	}
+	showInGrids(endpoint);
+}
+
+void Panel::hideFromGrids(
+		const VideoEndpoint &endpoint,
+		bool alsoMain) {
+	if (alsoMain && _viewport) {
+		_viewport->toggleHidden(endpoint, true);
+	}
+	if (_members && _members->viewport()) {
+		_members->viewport()->toggleHidden(endpoint, true);
+	}
+}
+
+void Panel::showInGrids(const VideoEndpoint &endpoint) {
+	if (_viewport) {
+		_viewport->toggleHidden(endpoint, false);
+	}
+	if (_members && _members->viewport()) {
+		_members->viewport()->toggleHidden(endpoint, false);
 	}
 }
 
@@ -3152,7 +3179,6 @@ void Panel::updateButtonsGeometry() {
 		const auto rtmp = _call->rtmp();
 		const auto shown = _wideControlsAnimation.value(
 			_wideControlsShown ? 1. : 0.);
-		const auto hidden = (shown == 0.);
 
 		if (_viewport) {
 			_viewport->setControlsShown(rtmp ? 0. : shown);
@@ -3170,11 +3196,6 @@ void Panel::updateButtonsGeometry() {
 		    + gridSize
 		    + chatToggleSize
 		    + _hangup->width();
-		// Discrete: anchor button cluster to bottom-right corner
-		auto left = widget()->width()
-		    - st::groupCallControlsBackMargin.right()
-		    - fullWidth;
-
 		const auto forMessagesWidth = fullWidth
 		    + st::groupCallControlsBackMargin.left()
 		    + st::groupCallControlsBackMargin.right();
@@ -3195,7 +3216,6 @@ void Panel::updateButtonsGeometry() {
 		const auto buttonsTop = widget()->height()
 			- messagesBottomSkip
 			- anim::interpolate(0, st::groupCallButtonBottomSkipWide, shown);
-		const auto muteTop = buttonsTop + addSkip;
 
 		const auto forMessagesBottom = buttonsTop
 			- st::groupCallControlsBackMargin.top()

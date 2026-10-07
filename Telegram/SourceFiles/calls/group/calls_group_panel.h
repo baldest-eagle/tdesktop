@@ -112,11 +112,16 @@ public:
 	[[nodiscard]] DisplayCoordinator *displayCoordinator() const {
 		return _displayCoordinator.get();
 	}
+	[[nodiscard]] Viewport *viewport() const {
+		return _viewport.get();
+	}
 
 	void promptPinTargetScreen(const VideoEndpoint &endpoint);
 
 	void pinToScreen(int screenIndex, const VideoEndpoint &endpoint);
 	void unpinFromScreen(int screenIndex, const VideoEndpoint &endpoint);
+	void hideFromGrids(const VideoEndpoint &endpoint, bool alsoMain);
+	void showInGrids(const VideoEndpoint &endpoint);
 
 	rpl::lifetime &lifetime();
 

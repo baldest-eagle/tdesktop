@@ -58,6 +58,9 @@ public:
 	[[nodiscard]] bool hidden() const {
 		return _hidden;
 	}
+	[[nodiscard]] bool hiddenByScreen() const {
+		return _hiddenByScreen;
+	}
 	[[nodiscard]] bool visible() const {
 		return !_hidden && !_geometry.isEmpty();
 	}
@@ -89,6 +92,7 @@ public:
 		QRect geometry,
 		TileAnimation animation = TileAnimation());
 	void hide();
+	void setHiddenByScreen(bool hidden);
 	void toggleTopControlsShown(bool shown);
 	bool updateRequestedQuality(VideoQuality quality);
 
@@ -137,6 +141,7 @@ private:
 	bool _topControlsShown = false;
 	bool _pinned = false;
 	bool _hidden = true;
+	bool _hiddenByScreen = false;
 	bool _rtmp = false;
 	bool _self = false;
 	crl::time _entryTime = 0;

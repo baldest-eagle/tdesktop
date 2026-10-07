@@ -96,6 +96,7 @@ public:
 	[[nodiscard]] std::vector<int> activeScreenIndices() const;
 	[[nodiscard]] rpl::producer<int> displayCountChanged() const;
 	[[nodiscard]] rpl::producer<VideoEndpoint> qualityRequests() const;
+	[[nodiscard]] rpl::producer<VideoEndpoint> pinnedRemoved() const;
 
 	bool hasTrack(int displayIndex, const VideoEndpoint &endpoint) const;
 	void removeVideoTrackFromAll(const VideoEndpoint &endpoint);
@@ -113,8 +114,10 @@ private:
 
 	std::map<int, DisplayWindow> _displays;
 	std::map<int, std::set<VideoEndpoint>> _routedEndpoints;
+	std::set<int> _destroying;
 	rpl::event_stream<int> _displayCountChanged;
 	rpl::event_stream<VideoEndpoint> _qualityRequests;
+	rpl::event_stream<VideoEndpoint> _pinnedRemoved;
 	rpl::lifetime _lifetime;
 
 	// Active speaker tracking
