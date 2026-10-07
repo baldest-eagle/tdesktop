@@ -38,6 +38,8 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "media/audio/media_audio_track.h"
 #include "platform/platform_specific.h"
 #include "ui/toast/toast.h"
+#include "ui/widgets/popup_menu.h"
+#include "styles/style_menu_icons.h"
 #include "base/unixtime.h"
 #include "mtproto/mtproto_config.h"
 #include "boxes/abstract_box.h" // Ui::show().
@@ -1204,5 +1206,35 @@ void Instance::showConferenceInvite(
 	}
 }
 
+
+void AddPinToGridAction(
+		not_null<Ui::PopupMenu*> menu,
+		not_null<PeerData*> peer) {
+	const auto panel = Core::App().calls().currentGroupCallPanel();
+	if (!panel || !panel->displayCoordinator()) {
+		return;
+	}
+	const auto call = panel->call();
+	const auto real = call ? call->lookupReal() : nullptr;
+	const auto participant = real ? real->participantByPeer(peer) : nullptr;
+	if (!participant) {
+		return;
+	}
+	const auto &id = (peer == call->joinAs())
+		? call->cameraSharingEndpoint()
+		: participant->cameraEndpoint();
+	if (id.empty()) {
+		return;
+	}
+	const auto endpoint = VideoEndpoint{
+		VideoEndpointType::Camera,
+		peer,
+		id,
+	};
+	menu->addAction(
+		tr::lng_group_call_context_pin_to_grid(tr::now),
+		[=] { panel->pinToScreen(0, endpoint); },
+		&st::menuIconPin);
+}
 
 } // namespace Calls

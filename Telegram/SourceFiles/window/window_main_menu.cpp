@@ -38,8 +38,10 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "mtproto/mtproto_config.h"
 #include "settings/sections/settings_advanced.h"
 #include "settings/sections/settings_calls.h"
+#include "settings/sections/settings_credits.h"
 #include "settings/sections/settings_information.h"
 #include "settings/settings_common.h"
+#include "ui/new_badges.h"
 #include "storage/localstorage.h"
 #include "storage/storage_account.h"
 #include "support/support_templates.h"
@@ -670,6 +672,14 @@ void MainMenu::setupMenu() {
 			controller->showSection(
 				Info::Stories::Make(controller->session().user()));
 		});
+
+		const auto wallet = addAction(
+			tr::lng_menu_wallet(),
+			{ &st::menuIconTon });
+		wallet->setClickedCallback([=] {
+			controller->showSettings(CurrencyId());
+		});
+		Ui::NewBadge::AddToRight(wallet);
 
 		SetupMenuBots(_menu, controller);
 

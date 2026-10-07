@@ -31,6 +31,7 @@ class Session;
 
 namespace Ui {
 class Show;
+class PopupMenu;
 } // namespace Ui
 
 namespace Calls::Group {
@@ -233,5 +234,9 @@ private:
 		std::vector<base::weak_ptr<GroupCall>>> _streams;
 
 };
+
+void AddPinToGridAction(
+	not_null<Ui::PopupMenu*> menu,
+	not_null<PeerData*> peer);
 
 } // namespace Calls

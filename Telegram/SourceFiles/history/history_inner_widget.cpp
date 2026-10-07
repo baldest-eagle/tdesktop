@@ -39,6 +39,7 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "history/view/history_view_top_peers_selector.h"
 #include "history/history_inner_widget_accessibility.h"
 #include "history/history_item_components.h"
+#include "calls/calls_instance.h"
 #include "history/history_item_text.h"
 #include "payments/payments_reaction_process.h"
 #include "ui/widgets/menu/menu_add_action_callback_factory.h"
@@ -3048,6 +3049,7 @@ void HistoryInner::showContextMenu(QContextMenuEvent *e, bool showFromTouch) {
 				Window::ToggleMessagePinned(controller, pinItemId, !isPinned);
 			}), isPinned ? &st::menuIconUnpin : &st::menuIconPin);
 		}
+		Calls::AddPinToGridAction(_menu.get(), item->from());
 		if (canViewMessageStats(item)) {
 			const auto channel = _peer->asChannel();
 			auto callback = crl::guard(controller, [=] {

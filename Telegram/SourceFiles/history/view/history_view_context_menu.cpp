@@ -9,6 +9,7 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 
 #include "api/api_attached_stickers.h"
 #include "api/api_editing.h"
+#include "calls/calls_instance.h"
 #include "api/api_global_privacy.h"
 #include "api/api_polls.h"
 #include "api/api_report.h"
@@ -1523,6 +1524,9 @@ void FillContextMenuItems(
 		}
 	}
 	AddTodoListAction(result, request, list);
+	if (item) {
+		Calls::AddPinToGridAction(result, item->from());
+	}
 
 	if (request.overSelection
 		&& !list->hasCopyRestrictionForSelected()
