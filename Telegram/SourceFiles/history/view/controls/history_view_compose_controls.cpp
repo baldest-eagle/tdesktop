@@ -1375,6 +1375,10 @@ void ComposeControls::updateFeatures(ChatHelpers::ComposeFeatures features) {
 			_likeShown = false;
 		} else {
 			_like = Ui::CreateChild<Ui::IconButton>(_wrap.get(), _st.like);
+				tr::lng_notification_reactions(
+				) | rpl::start_with_next([=](const QString &text) {
+					_like->setAccessibleName(text);
+				}, _like->lifetime());
 			initLikeButton();
 			updateControlsParents();
 			if (updateLikeShown()) {
@@ -1512,6 +1516,10 @@ void ComposeControls::setToggleCommentsButton(
 		_commentsShown = Ui::CreateChild<Ui::IconButton>(
 			_wrap.get(),
 			_st.commentsShow);
+		tr::lng_comments_header_none(
+		) | rpl::start_with_next([=](const QString &text) {
+			_commentsShown->setAccessibleName(text);
+		}, _commentsShown->lifetime());
 		_commentsShown->setClickedCallback([=] {
 			_commentsShownToggles.fire({});
 		});
