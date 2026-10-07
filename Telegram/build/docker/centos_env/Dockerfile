@@ -156,16 +156,6 @@ cd ../..
 rm -rf Implib.so
 EOF
 
-FROM builder AS patches
-RUN <<EOF
-git init patches
-cd patches
-git remote add origin https://github.com/desktop-app/patches.git
-git fetch --depth=1 origin 27efa67b60881c52b112cf924d705e573d03a0ab
-git reset --hard FETCH_HEAD
-rm -rf .git
-EOF
-
 FROM builder AS zlib
 RUN --mount=type=cache,target=/var/cache/ccache <<EOF
 git init zlib
@@ -863,8 +853,9 @@ cd ..
 rm -rf libxkbcommon
 EOF
 
-FROM patches AS qt
+FROM builder AS qt
 COPY --link --from=zlib /usr/src/zlib-cache /
+COPY Telegram/build/patches /usr/src/patches
 COPY --link --from=lcms2 /usr/src/lcms2-cache /
 COPY --link --from=mozjpeg /usr/src/mozjpeg-cache /
 COPY --link --from=webp /usr/src/webp-cache /
@@ -1043,7 +1034,7 @@ COPY --link --from=webrtc /usr/src/webrtc-cache /
 COPY --link --from=ada /usr/src/ada-cache /
 COPY --link --from=tde2e /usr/src/tde2e-cache /
 
-COPY --link --from=patches /usr/src/patches patches
+COPY Telegram/build/patches patches
 RUN <<EOF
 patch -p1 -d /usr/lib64/gobject-introspection -i $PWD/patches/gobject-introspection.patch
 rm -rf patches
