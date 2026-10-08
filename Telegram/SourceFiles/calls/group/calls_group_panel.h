@@ -33,7 +33,6 @@ class BoxContent;
 class AbstractButton;
 class ImportantTooltip;
 class DropdownMenu;
-class CallButton;
 class CallMuteButton;
 class IconButton;
 class FlatLabel;
@@ -46,7 +45,6 @@ class PaddingWrap;
 class ScrollArea;
 class GenericBox;
 class GroupCallScheduledLeft;
-struct CallButtonColors;
 } // namespace Ui
 
 namespace Ui::Toast {
@@ -62,6 +60,8 @@ struct CallBodyLayout;
 namespace Calls {
 struct InviteRequest;
 struct ConferencePanelMigration;
+class CallButton;
+struct CallButtonColors;
 class Window;
 } // namespace Calls
 
@@ -198,7 +198,7 @@ private:
 	[[nodiscard]] Fn<void()> shareConferenceLinkCallback();
 	void toggleMessageTyping();
 	void toggleChatPanel();
-	[[nodiscard]] rpl::producer<Ui::CallButtonColors> toggleableOverrides(
+	[[nodiscard]] rpl::producer<Calls::CallButtonColors> toggleableOverrides(
 		rpl::producer<bool> active);
 
 	void endCall();
@@ -274,20 +274,20 @@ private:
 
 	object_ptr<Ui::RpWidget> _controlsBackgroundWide = { nullptr };
 	std::unique_ptr<ControlsBackgroundNarrow> _controlsBackgroundNarrow;
-	object_ptr<Ui::CallButton> _settings = { nullptr };
-	object_ptr<Ui::CallButton> _wideMenu = { nullptr };
-	object_ptr<Ui::CallButton> _callShare = { nullptr };
-	object_ptr<Ui::CallButton> _video = { nullptr };
-	object_ptr<Ui::CallButton> _screenShare = { nullptr };
-	object_ptr<Ui::CallButton> _message = { nullptr };
-	object_ptr<Ui::CallButton> _gridModeButton = { nullptr };
-	object_ptr<Ui::CallButton> _chatToggle = { nullptr };
+	object_ptr<Calls::CallButton> _settings = { nullptr };
+	object_ptr<Calls::CallButton> _wideMenu = { nullptr };
+	object_ptr<Calls::CallButton> _callShare = { nullptr };
+	object_ptr<Calls::CallButton> _video = { nullptr };
+	object_ptr<Calls::CallButton> _screenShare = { nullptr };
+	object_ptr<Calls::CallButton> _message = { nullptr };
+	object_ptr<Calls::CallButton> _gridModeButton = { nullptr };
+	object_ptr<Calls::CallButton> _chatToggle = { nullptr };
 	object_ptr<Ui::RpWidget> _chatPanel = { nullptr };
 	std::unique_ptr<MessagesUi> _panelMessages;
 	object_ptr<Ui::IconButton> _chatPanelClose = { nullptr };
 	rpl::variable<bool> _chatPanelShown = false;
 	std::unique_ptr<Ui::CallMuteButton> _mute;
-	object_ptr<Ui::CallButton> _hangup;
+	object_ptr<Calls::CallButton> _hangup;
 	object_ptr<Ui::ImportantTooltip> _niceTooltip = { nullptr };
 	QPointer<Ui::IconButton> _stickedTooltipClose;
 	QPointer<Ui::RpWidget> _niceTooltipControl;

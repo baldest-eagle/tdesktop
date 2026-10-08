@@ -30,7 +30,7 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "ui/platform/ui_platform_utility.h"
 #include "ui/controls/call_mute_button.h"
 #include "ui/widgets/buttons.h"
-#include "ui/controls/call_button.h"
+#include "calls/ui/calls_call_button.h"
 #include "ui/widgets/checkbox.h"
 #include "ui/widgets/dropdown_menu.h"
 #include "ui/widgets/fields/input_field.h"
@@ -1052,11 +1052,15 @@ void Panel::refreshLeftButton() {
 	}
 	const auto raw = _callShare ? _callShare.data() : _settings.data();
 	raw->show();
-	raw->setColorOverrides(_mute->colorOverrides());
+	raw->setColorOverrides(
+		_mute->colorOverrides()
+		| rpl::map([](Ui::CallButtonColors colors) {
+			return Calls::CallButtonColors{ colors.bg, colors.ripple };
+		}));
 	updateButtonsStyles();
 }
 
-rpl::producer<Ui::CallButtonColors> Panel::toggleableOverrides(
+rpl::producer<Calls::CallButtonColors> Panel::toggleableOverrides(
 		rpl::producer<bool> active) {
 	return rpl::combine(
 		std::move(active),
@@ -1065,7 +1069,7 @@ rpl::producer<Ui::CallButtonColors> Panel::toggleableOverrides(
 		if (active && colors.bg) {
 			colors.bg->setAlpha(kOverrideActiveColorBgAlpha);
 		}
-		return colors;
+		return Calls::CallButtonColors{ colors.bg, colors.ripple };
 	});
 }
 

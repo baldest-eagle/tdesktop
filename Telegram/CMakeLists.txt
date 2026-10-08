@@ -471,6 +471,8 @@ PRIVATE
     calls/calls_instance.h
     calls/calls_panel.cpp
     calls/calls_panel.h
+    calls/ui/calls_call_button.cpp
+    calls/ui/calls_call_button.h
     calls/calls_panel_background.cpp
     calls/calls_panel_background.h
     calls/calls_signal_bars.cpp

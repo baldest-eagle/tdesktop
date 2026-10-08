@@ -33,7 +33,6 @@ class LayerWidget;
 enum class LayerOption;
 using LayerOptions = base::flags<LayerOption>;
 class IconButton;
-class CallButton;
 class LayerManager;
 class FlatLabel;
 template <typename Widget>
@@ -60,6 +59,7 @@ struct CallBodyLayout;
 
 namespace Calls {
 
+class CallButton;
 class Window;
 class Userpic;
 class SignalBars;
@@ -173,21 +173,21 @@ private:
 	rpl::lifetime _callLifetime;
 
 	not_null<const style::CallBodyLayout*> _bodySt;
-	base::unique_qptr<Ui::CallButton> _answerHangupRedial;
-	base::unique_qptr<Ui::FadeWrap<Ui::CallButton>> _decline;
-	base::unique_qptr<Ui::FadeWrap<Ui::CallButton>> _cancel;
+	base::unique_qptr<Calls::CallButton> _answerHangupRedial;
+	base::unique_qptr<Ui::FadeWrap<Calls::CallButton>> _decline;
+	base::unique_qptr<Ui::FadeWrap<Calls::CallButton>> _cancel;
 	bool _hangupShown = false;
 	bool _conferenceSupported = false;
 	bool _outgoingPreviewInBody = false;
 	std::optional<AnswerHangupRedialState> _answerHangupRedialState;
 	Ui::Animations::Simple _hangupShownProgress;
-	base::unique_qptr<Ui::FadeWrap<Ui::CallButton>> _screencast;
-	base::unique_qptr<Ui::CallButton> _camera;
-	Ui::CallButton *_cameraDeviceToggle = nullptr;
-	base::unique_qptr<Ui::CallButton> _startVideo;
-	base::unique_qptr<Ui::FadeWrap<Ui::CallButton>> _mute;
-	Ui::CallButton *_audioDeviceToggle = nullptr;
-	base::unique_qptr<Ui::FadeWrap<Ui::CallButton>> _addPeople;
+	base::unique_qptr<Ui::FadeWrap<Calls::CallButton>> _screencast;
+	base::unique_qptr<Calls::CallButton> _camera;
+	Calls::CallButton *_cameraDeviceToggle = nullptr;
+	base::unique_qptr<Calls::CallButton> _startVideo;
+	base::unique_qptr<Ui::FadeWrap<Calls::CallButton>> _mute;
+	Calls::CallButton *_audioDeviceToggle = nullptr;
+	base::unique_qptr<Ui::FadeWrap<Calls::CallButton>> _addPeople;
 	base::unique_qptr<Ui::FlatLabel> _name;
 	base::unique_qptr<Ui::FlatLabel> _status;
 	base::unique_qptr<Ui::RpWidget> _conferenceParticipants;

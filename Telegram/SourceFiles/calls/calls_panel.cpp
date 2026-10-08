@@ -27,7 +27,7 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "calls/calls_video_incoming.h"
 #include "calls/calls_window.h"
 #include "ui/platform/ui_platform_window_title.h"
-#include "ui/controls/call_button.h"
+#include "calls/ui/calls_call_button.h"
 #include "ui/widgets/buttons.h"
 #include "ui/widgets/labels.h"
 #include "ui/widgets/popup_menu.h"
@@ -115,15 +115,15 @@ Panel::Panel(not_null<Call*> call)
 , _decline(
 	std::in_place,
 	widget(),
-	object_ptr<Ui::CallButton>(widget(), st::callHangup))
+	object_ptr<Calls::CallButton>(widget(), st::callHangup))
 , _cancel(
 	std::in_place,
 	widget(),
-	object_ptr<Ui::CallButton>(widget(), st::callCancel))
+	object_ptr<Calls::CallButton>(widget(), st::callCancel))
 , _screencast(
 	std::in_place,
 	widget(),
-	object_ptr<Ui::CallButton>(
+	object_ptr<Calls::CallButton>(
 		widget(),
 		st::callScreencastOn,
 		&st::callScreencastOff))
@@ -131,14 +131,14 @@ Panel::Panel(not_null<Call*> call)
 , _mute(
 	std::in_place,
 	widget(),
-	object_ptr<Ui::CallButton>(
+	object_ptr<Calls::CallButton>(
 		widget(),
 		st::callMicrophoneMute,
 		&st::callMicrophoneUnmute))
 , _addPeople(
 	std::in_place,
 	widget(),
-	object_ptr<Ui::CallButton>(widget(), st::callAddPeople))
+	object_ptr<Calls::CallButton>(widget(), st::callAddPeople))
 , _name(std::in_place, widget(), st::callName)
 , _status(std::in_place, widget(), st::callStatus)
 , _hideControlsTimer([=] { requestControlsHidden(true); })
@@ -1399,7 +1399,7 @@ void Panel::stateChanged(State state) {
 		if (_startVideo && !isWaitingUser) {
 			_startVideo = nullptr;
 		} else if (!_startVideo && isWaitingUser) {
-			_startVideo = base::make_unique_q<Ui::CallButton>(
+			_startVideo = base::make_unique_q<Calls::CallButton>(
 				widget(),
 				st::callStartVideo);
 			_startVideo->show();
