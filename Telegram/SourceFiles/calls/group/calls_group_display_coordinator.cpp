@@ -126,11 +126,11 @@ void DisplayCoordinator::createDisplayWindow(int displayIndex, QScreen *screen) 
 		return;
 	}
 
-	const auto screenGeo = screen->geometry();
-	display.widget->setGeometry(screenGeo);
-	display.viewport->widget()->show();
+	setupWindowGeometry(display);
+
 	display.widget->show();
 	display.widget->raise();
+	display.viewport->widget()->show();
 
 	const auto escapeShortcut = new QShortcut(
 		QKeySequence(Qt::Key_Escape),
@@ -161,7 +161,6 @@ void DisplayCoordinator::createDisplayWindow(int displayIndex, QScreen *screen) 
 		_qualityRequests.fire_copy(request.endpoint);
 	}, display.viewport->lifetime());
 
-	setupWindowGeometry(display);
 	_displayCountChanged.fire(static_cast<int>(_displays.size()));
 }
 
@@ -281,22 +280,24 @@ void DisplayCoordinator::pinToScreen(
 		const VideoTileTrack &track,
 		rpl::producer<QSize> trackSize,
 		bool self) {
-	ensureStageWindow(screenIndex);
-	auto it = _displays.find(screenIndex);
-	if (it == _displays.end() || !it->second.viewport) {
-		return;
-	}
-	_routedEndpoints[screenIndex].insert(endpoint);
-	if (!it->second.viewport->isPinned(endpoint)) {
-		it->second.viewport->add(
-			endpoint,
-			track,
-			std::move(trackSize),
-			rpl::single(true),
-			self);
-		it->second.viewport->togglePin(endpoint, true);
-	}
-	showDisplay(screenIndex);
+	crl::on_main([=, trackSize = std::move(trackSize)]() mutable {
+		ensureStageWindow(screenIndex);
+		auto it = _displays.find(screenIndex);
+		if (it == _displays.end() || !it->second.viewport) {
+			return;
+		}
+		_routedEndpoints[screenIndex].insert(endpoint);
+		if (!it->second.viewport->isPinned(endpoint)) {
+			it->second.viewport->add(
+				endpoint,
+				track,
+				std::move(trackSize),
+				rpl::single(true),
+				self);
+			it->second.viewport->togglePin(endpoint, true);
+		}
+		showDisplay(screenIndex);
+	});
 }
 
 void DisplayCoordinator::unpinFromScreen(int screenIndex, const VideoEndpoint &endpoint) {
