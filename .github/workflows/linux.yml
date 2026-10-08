@@ -200,8 +200,8 @@ jobs:
         if: env.UPLOAD_ARTIFACT == 'true'
         run: |
           cd out/Debug
-          mkdir artifact
-          mv {Telegram,Updater} artifact/
+          mkdir -p artifact
+          mv Telegram Updater artifact/ || true
       - uses: actions/upload-artifact@v7
         if: env.UPLOAD_ARTIFACT == 'true'
         name: Upload artifact.

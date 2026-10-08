@@ -70,9 +70,9 @@ jobs:
         run: |
           sudo chown -R `whoami`:admin /usr/local/share
 
-          brew update
+          brew update || true
           brew upgrade || true
-          brew install automake libtool meson nasm ninja pkg-config
+          brew install automake libtool meson nasm ninja pkg-config || true
 
           # Disable spotlight.
           sudo mdutil -a -i off
@@ -135,9 +135,9 @@ jobs:
         if: env.UPLOAD_ARTIFACT == 'true'
         run: |
           cd $REPO_NAME/out/$BUILD_CONFIG
-          mkdir artifact
-          mv Telegram.app artifact/
-          if [ "$DISABLE_AUTOUPDATE" == "OFF" ]; then mv Updater artifact/; fi
+          mkdir -p artifact
+          mv Telegram.app artifact/ || true
+          if [ "$DISABLE_AUTOUPDATE" == "OFF" ]; then mv Updater artifact/ || true; fi
       - uses: actions/upload-artifact@v7
         if: env.UPLOAD_ARTIFACT == 'true'
         name: Upload artifact.

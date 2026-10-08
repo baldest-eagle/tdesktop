@@ -241,6 +241,10 @@ void FilterRowButton::setup(
 		const QString &status) {
 	resize(width(), st::defaultPeerListItem.height);
 
+	tr::lng_box_delete() | rpl::start_with_next([=](const QString &text) {
+		_remove.setAccessibleName(text);
+	}, _remove.lifetime());
+
 	_status = status;
 	updateData(filter, true);
 	setState(_state, true);
