@@ -75,7 +75,7 @@ jobs:
       - name: Prepare directories.
         run: |
           if not exist %userprofile%\TBuild\Libraries mkdir %userprofile%\TBuild\Libraries
-          mklink /d %GITHUB_WORKSPACE%\TBuild %userprofile%\TBuild
+          if not exist %GITHUB_WORKSPACE%\TBuild mklink /d %GITHUB_WORKSPACE%\TBuild %userprofile%\TBuild
           echo TBUILD=%GITHUB_WORKSPACE%\TBuild>>%GITHUB_ENV%
           echo LibrariesPath=%GITHUB_WORKSPACE%\TBuild\Libraries${{ matrix.arch == 'x64' && '\win64' || '' }}>>%GITHUB_ENV%
 
@@ -133,7 +133,7 @@ jobs:
         with:
           arch: ${{ matrix.arch }}
           sdk: ${{ env.SDK }}
-          toolset: ${{ case(matrix.arch == 'arm64', '', '14.44') }}
+          toolset: ${{ matrix.arch == 'arm64' && '' || '14.44' }}
 
       - name: NuGet sources.
         run: |
