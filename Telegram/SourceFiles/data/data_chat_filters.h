@@ -36,6 +36,8 @@ struct ChatFilterTitle {
 
 [[nodiscard]] TextWithEntities ForceCustomEmojiStatic(TextWithEntities text);
 
+inline constexpr FilterId kCallsFilterId = FilterId(-2);
+
 class ChatFilter final {
 public:
 	enum class Flag : ushort {
@@ -162,11 +164,14 @@ public:
 	void remove(FilterId id);
 	void moveAllToFront();
 	[[nodiscard]] const std::vector<ChatFilter> &list() const;
+	[[nodiscard]] ChatFilter callsFilter() const;
+	[[nodiscard]] std::vector<ChatFilter> displayList() const;
 	[[nodiscard]] rpl::producer<> changed() const;
 	[[nodiscard]] rpl::producer<FilterId> isChatlistChanged() const;
 	[[nodiscard]] rpl::producer<TagColorChanged> tagColorChanged() const;
 	[[nodiscard]] bool loaded() const;
 	[[nodiscard]] bool has() const;
+	[[nodiscard]] bool hasTabs() const;
 
 	[[nodiscard]] FilterId defaultId() const;
 	[[nodiscard]] FilterId lookupId(int index) const;
@@ -174,6 +179,7 @@ public:
 	bool loadNextExceptions(bool chatsListLoaded);
 
 	void refreshHistory(not_null<History*> history);
+	void refreshCallsMembership(not_null<History*> history);
 
 	[[nodiscard]] not_null<Dialogs::MainList*> chatsList(FilterId filterId);
 	void clear();
@@ -265,6 +271,8 @@ private:
 	base::flat_map<FilterId, MoreChatsData> _moreChatsData;
 	rpl::event_stream<FilterId> _moreChatsUpdated;
 	base::Timer _moreChatsTimer;
+
+	rpl::lifetime _lifetime;
 
 };
 

@@ -296,10 +296,18 @@ Session::Session(not_null<Main::Session*> session)
 
 	_chatsFilters->changed(
 	) | rpl::on_next([=] {
-		const auto enabled = _chatsFilters->has();
+		const auto enabled = _chatsFilters->hasTabs();
 		if (enabled != session->settings().dialogsFiltersEnabled()) {
 			session->settings().setDialogsFiltersEnabled(enabled);
 			session->saveSettingsDelayed();
+		}
+	}, _lifetime);
+
+	session->changes().peerUpdates(
+		PeerUpdate::Flag::GroupCall
+	) | rpl::on_next([=](const PeerUpdate &update) {
+		if (const auto history = historyLoaded(update.peer)) {
+			refreshCallsChatListEntry(history);
 		}
 	}, _lifetime);
 
@@ -5372,6 +5380,23 @@ not_null<Dialogs::IndexedList*> Session::contactsNoChatsList() {
 	return &_contactsNoChatsList;
 }
 
+void Session::refreshCallsChatListEntry(not_null<History*> history) {
+	const auto filterId = Data::kCallsFilterId;
+	const auto existed = history->inChatList(filterId);
+	_chatsFilters->refreshCallsMembership(history);
+	auto event = ChatListEntryRefresh{ .key = history, .filterId = filterId };
+	if (existed != history->inChatList(filterId)) {
+		event.existenceChanged = true;
+	} else if (existed) {
+		event.moved = history->adjustByPosInChatList(
+			filterId,
+			chatsFilters().chatsList(filterId));
+	}
+	if (event) {
+		_chatListEntryRefreshes.fire(std::move(event));
+	}
+}
+
 void Session::refreshChatListEntry(Dialogs::Key key) {
 	Expects(key.entry()->folderKnown());
 
@@ -5419,6 +5444,7 @@ void Session::refreshChatListEntry(Dialogs::Key key) {
 			_chatListEntryRefreshes.fire(std::move(event));
 		}
 	}
+	refreshCallsChatListEntry(history);
 
 	if (creating) {
 		if (const auto from = history->peer->migrateFrom()) {
@@ -5481,6 +5507,9 @@ void Session::removeChatListEntry(Dialogs::Key key) {
 		.key = key,
 		.existenceChanged = true
 	});
+	if (const auto history = entry->asHistory()) {
+		refreshCallsChatListEntry(history);
+	}
 	if (_contactsList.contains(key)) {
 		if (!_contactsNoChatsList.contains(key)) {
 			_contactsNoChatsList.addByName(key);

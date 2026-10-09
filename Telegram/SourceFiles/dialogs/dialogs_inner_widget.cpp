@@ -4904,6 +4904,8 @@ void InnerWidget::refreshEmpty() {
 			: EmptyState::None)
 		: (!_filterId && data->contactsLoaded().current())
 		? EmptyState::NoContacts
+		: (_filterId == Data::kCallsFilterId) && data->chatsList()->loaded()
+		? EmptyState::EmptyCalls
 		: (_filterId > 0) && data->chatsList()->loaded()
 		? EmptyState::EmptyFolder
 		: EmptyState::Loading;
@@ -4929,6 +4931,8 @@ void InnerWidget::refreshEmpty() {
 	_emptyState = state;
 	auto phrase = (state == EmptyState::NoContacts)
 		? tr::lng_no_chats()
+		: (state == EmptyState::EmptyCalls)
+		? tr::lng_no_active_calls()
 		: (state == EmptyState::EmptyFolder)
 		? tr::lng_no_chats_filter()
 		: (state == EmptyState::EmptyForum)
@@ -5575,7 +5579,7 @@ void InnerWidget::switchToFilter(FilterId filterId) {
 	if (_controller->windowId().type != Window::SeparateType::Primary) {
 		return;
 	}
-	const auto &list = session().data().chatsFilters().list();
+	const auto list = session().data().chatsFilters().displayList();
 	const auto filterIt = filterId
 		? ranges::find(list, filterId, &Data::ChatFilter::id)
 		: end(list);
@@ -6208,7 +6212,7 @@ void InnerWidget::setupShortcuts() {
 			return false;
 		});
 
-		if (session().data().chatsFilters().has()) {
+		if (session().data().chatsFilters().hasTabs()) {
 			const auto filters = &session().data().chatsFilters();
 			const auto filtersCount = int(filters->list().size());
 			auto &&folders = ranges::views::zip(

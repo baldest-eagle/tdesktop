@@ -711,17 +711,6 @@ void MainMenu::setupMenu() {
 		)->setClickedCallback([=] {
 			controller->show(PrepareContactsBox(controller));
 		});
-		const auto calls = addAction(
-			tr::lng_menu_calls(),
-			{ &st::menuIconPhone }
-		);
-		calls->setClickedCallback([=] {
-			_contextMenu = base::make_unique_q<Ui::PopupMenu>(
-				calls,
-				st::popupMenuWithIcons);
-			::Calls::ShowCallsMenu(_contextMenu.get(), controller);
-			_contextMenu->popup(QCursor::pos());
-		});
 		addAction(
 			tr::lng_saved_messages(),
 			{ &st::menuIconSavedMessages }

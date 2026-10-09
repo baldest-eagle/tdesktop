@@ -234,15 +234,8 @@ void Entry::updateChatListSortPosition() {
 }
 
 int Entry::lookupPinnedIndex(FilterId filterId) const {
-	if (filterId) {
-		const auto i = _pinnedIndex.find(filterId);
-		return (i != end(_pinnedIndex)) ? i->second : 0;
-	} else if (!_pinnedIndex.empty()) {
-		return _pinnedIndex.front().first
-			? 0
-			: _pinnedIndex.front().second;
-	}
-	return 0;
+	const auto i = _pinnedIndex.find(filterId);
+	return (i != end(_pinnedIndex)) ? i->second : 0;
 }
 
 uint64 Entry::computeSortPosition(FilterId filterId) const {

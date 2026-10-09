@@ -334,6 +334,9 @@ FilterIcon ComputeDefaultFilterIcon(const Data::ChatFilter &filter) {
 }
 
 FilterIcon ComputeFilterIcon(const Data::ChatFilter &filter) {
+	if (filter.id() == Data::kCallsFilterId) {
+		return FilterIcon::Groups;
+	}
 	return LookupFilterIconByEmoji(filter.iconEmoji()).value_or(
 		ComputeDefaultFilterIcon(filter));
 }

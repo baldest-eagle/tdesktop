@@ -4410,7 +4410,7 @@ void TogglePinnedThread(
 	const auto owner = &history->owner();
 
 	// This can happen when you remove this filter from another client.
-	if (!ranges::contains(
+	if ((filterId != Data::kCallsFilterId) && !ranges::contains(
 			(&owner->session())->data().chatsFilters().list(),
 			filterId,
 			&Data::ChatFilter::id)) {

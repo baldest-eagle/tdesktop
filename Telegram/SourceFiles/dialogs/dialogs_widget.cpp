@@ -946,7 +946,7 @@ void Widget::setupSwipeBack() {
 				}
 			});
 		}
-		if (session().data().chatsFilters().has() && isDisabled) {
+		if (session().data().chatsFilters().hasTabs() && isDisabled) {
 			_swipeBackMirrored = !isRightToLeft;
 			using namespace Window;
 			const auto next = !isRightToLeft;

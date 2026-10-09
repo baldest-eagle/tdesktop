@@ -10,6 +10,7 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "api/api_text_entities.h"
 #include "history/history.h"
 #include "data/data_peer.h"
+#include "data/data_peer_values.h"
 #include "data/data_user.h"
 #include "data/data_chat.h"
 #include "data/data_channel.h"
@@ -19,6 +20,7 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "dialogs/dialogs_main_list.h"
 #include "history/history.h"
 #include "history/history_unread_things.h"
+#include "lang/lang_keys.h"
 #include "ui/ui_utility.h"
 #include "ui/chat/more_chats_bar.h"
 #include "main/main_session.h"
@@ -408,8 +410,29 @@ not_null<Dialogs::MainList*> ChatFilters::chatsList(FilterId filterId) {
 			&_owner->session(),
 			filterId,
 			_owner->maxPinnedChatsLimitValue(filterId));
+		if (filterId == kCallsFilterId) {
+			pointer->setLoaded();
+		}
 	}
 	return pointer.get();
+}
+
+void ChatFilters::refreshCallsMembership(not_null<History*> history) {
+	const auto channel = history->peer->asChannel();
+	const auto shouldShow = channel
+		&& Data::ChannelHasActiveCall(channel)
+		&& !history->folder()
+		&& history->inChatList();
+	const auto shown = history->inChatList(kCallsFilterId);
+	if (shouldShow == shown) {
+		return;
+	}
+	const auto list = chatsList(kCallsFilterId);
+	if (shouldShow) {
+		history->addToChatList(kCallsFilterId, list);
+	} else {
+		history->removeFromChatList(kCallsFilterId, list);
+	}
 }
 
 void ChatFilters::clear() {
@@ -901,6 +924,26 @@ const std::vector<ChatFilter> &ChatFilters::list() const {
 	return _list;
 }
 
+ChatFilter ChatFilters::callsFilter() const {
+	return ChatFilter(
+		kCallsFilterId,
+		ChatFilterTitle{
+			.text = TextWithEntities{ tr::lng_menu_calls(tr::now) },
+		},
+		QString(),
+		std::nullopt,
+		ChatFilter::Flags(),
+		{},
+		{},
+		{});
+}
+
+std::vector<ChatFilter> ChatFilters::displayList() const {
+	auto result = _list;
+	result.insert(result.begin() + (result.empty() ? 0 : 1), callsFilter());
+	return result;
+}
+
 FilterId ChatFilters::defaultId() const {
 	return lookupId(0);
 }
@@ -925,6 +968,10 @@ bool ChatFilters::loaded() const {
 
 bool ChatFilters::has() const {
 	return _list.size() > 1;
+}
+
+bool ChatFilters::hasTabs() const {
+	return displayList().size() > 1;
 }
 
 rpl::producer<> ChatFilters::changed() const {

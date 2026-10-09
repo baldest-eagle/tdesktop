@@ -934,6 +934,7 @@ public:
 	};
 	void refreshChatListEntry(Dialogs::Key key);
 	void removeChatListEntry(Dialogs::Key key);
+	void refreshCallsChatListEntry(not_null<History*> history);
 	void refreshChatListUnreadOnTop();
 	[[nodiscard]] auto chatListEntryRefreshes() const
 		-> rpl::producer<ChatListEntryRefresh>;

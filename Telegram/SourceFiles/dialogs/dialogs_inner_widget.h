@@ -301,6 +301,7 @@ private:
 		Loading,
 		NoContacts,
 		EmptyFolder,
+		EmptyCalls,
 		EmptyForum,
 		EmptySavedSublists,
 	};

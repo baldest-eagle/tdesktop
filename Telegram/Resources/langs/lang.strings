@@ -470,6 +470,7 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 "lng_no_conversations_button" = "New Message";
 "lng_no_conversations_subtitle" = "Your contacts on Telegram";
 "lng_no_chats_filter" = "No chats currently belong to this folder.";
+"lng_no_active_calls" = "No active calls right now.";
 "lng_no_saved_sublists" = "You can save messages from other chats here.";
 "lng_contacts_loading" = "Loading...";
 "lng_contacts_not_found" = "No contacts found";

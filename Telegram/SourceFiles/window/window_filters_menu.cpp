@@ -262,7 +262,7 @@ void FiltersMenu::scrollToButton(not_null<Ui::RpWidget*> widget) {
 }
 
 void FiltersMenu::applyFilterAt(int start, int delta) {
-	const auto &list = _session->session().data().chatsFilters().list();
+	const auto list = _session->session().data().chatsFilters().displayList();
 	const auto count = int(list.size());
 	// Move focus to the folder at `start`, then in the `delta` direction,
 	// stopping at the bounds (no wrap). Arrow keys only move focus; activation
@@ -284,7 +284,7 @@ void FiltersMenu::applyFilterAt(int start, int delta) {
 }
 
 void FiltersMenu::moveToFilter(int delta) {
-	const auto &list = _session->session().data().chatsFilters().list();
+	const auto list = _session->session().data().chatsFilters().displayList();
 	const auto count = int(list.size());
 	// Move relative to the currently focused folder, so navigation continues
 	// from a locked one (which only takes focus, without becoming active); fall
@@ -304,7 +304,7 @@ void FiltersMenu::moveToFilter(int delta) {
 
 void FiltersMenu::moveToFilterEdge(int delta) {
 	const auto count = int(
-		_session->session().data().chatsFilters().list().size());
+		_session->session().data().chatsFilters().displayList().size());
 	applyFilterAt((delta > 0) ? 0 : (count - 1), delta);
 }
 
@@ -339,7 +339,7 @@ bool FiltersMenu::listFocused() const {
 
 void FiltersMenu::refresh() {
 	const auto filters = &_session->session().data().chatsFilters();
-	if (!filters->has() || _ignoreRefresh) {
+	if (!filters->hasTabs() || _ignoreRefresh) {
 		return;
 	}
 	const auto oldTop = _scroll.scrollTop();
@@ -353,12 +353,16 @@ void FiltersMenu::refresh() {
 	const auto maxLimit = (reorderAll ? 1 : 0)
 		+ Data::PremiumLimits(&_session->session()).dialogFiltersCurrent();
 	const auto premiumFrom = (reorderAll ? 0 : 1) + maxLimit;
+	const auto foldersCount = int(filters->list().size());
 	if (!reorderAll) {
 		_reorder->addPinnedInterval(0, 1);
 	}
-	_reorder->addPinnedInterval(
-		premiumFrom,
-		std::max(1, int(filters->list().size()) - maxLimit));
+	_reorder->addPinnedInterval(1, 1);
+	if (premiumFrom) {
+		_reorder->addPinnedInterval(
+			premiumFrom + 1,
+			std::max(1, foldersCount - maxLimit));
+	}
 
 	// Remember which folder holds keyboard focus so the roving Tab-stop can be
 	// re-established on its replacement after the rebuild: the new buttons are
@@ -374,8 +378,9 @@ void FiltersMenu::refresh() {
 
 	auto now = base::flat_map<int, base::unique_qptr<Ui::SideBarButton>>();
 	const auto &currentFilter = _session->activeChatsFilterCurrent();
-	for (const auto &filter : filters->list()) {
-		const auto nextIsLocked = (now.size() >= premiumFrom);
+	for (const auto &filter : filters->displayList()) {
+		const auto nextIsLocked = (filter.id() != Data::kCallsFilterId)
+			&& (now.size() >= premiumFrom + 1);
 		if (nextIsLocked && (currentFilter == filter.id())) {
 			_session->setActiveChatsFilter(FilterId(0));
 		}
@@ -554,12 +559,13 @@ base::unique_qptr<Ui::SideBarButton> FiltersMenu::prepareButton(
 		return On(PowerSaving::kEmojiChat)
 			|| _session->isGifPausedAtLeastFor(Window::GifPauseReason::Any);
 	};
-	// A real folder (id >= 0), locked or not, is a selectable list item; only
-	// the "Edit" button (id < 0) stays a plain button. Establish this before
-	// inserting the widget - insertion shows the child immediately, so
-	// configuring the role up front avoids a transient or separately-announced
-	// role change.
-	const auto listItem = (id >= 0);
+	// A real folder - a server one (id >= 0) or the local Calls one - locked or
+	// not, is a selectable list item; only the "Edit" button (id == -1) stays a
+	// plain button. Establish this before inserting the widget - insertion shows
+	// the child immediately, so configuring the role up front avoids a transient
+	// or separately-announced role change.
+	const auto isFilter = (id >= 0) || (id == Data::kCallsFilterId);
+	const auto listItem = isFilter;
 	const auto mode = tabsMode();
 	auto prepared = object_ptr<Ui::SideBarButton>(
 		container,
@@ -586,7 +592,7 @@ base::unique_qptr<Ui::SideBarButton> FiltersMenu::prepareButton(
 		? icon
 		: Ui::FilterIcon::All);
 	raw->setIconOverride(icons.normal, icons.active);
-	if (id >= 0) {
+	if (isFilter) {
 		if (locked) {
 			// Surface a locked folder's premium-gated status and what pressing
 			// it does, which the visual lock glyph alone can't convey to a
@@ -680,7 +686,7 @@ base::unique_qptr<Ui::SideBarButton> FiltersMenu::prepareButton(
 				FiltersLimitBox,
 				&_session->session(),
 				std::nullopt));
-		} else if (id >= 0) {
+		} else if (isFilter) {
 			_session->setActiveChatsFilter(id);
 		} else {
 			openFiltersSettings();
@@ -804,12 +810,10 @@ void FiltersMenu::applyReorder(
 	}
 
 	const auto filters = &_session->session().data().chatsFilters();
-	const auto &list = filters->list();
-	if (!premium()) {
-		if (list[0].id() != FilterId()) {
-			filters->moveAllToFront();
-		}
+	if (!premium() && (filters->list().front().id() != FilterId())) {
+		filters->moveAllToFront();
 	}
+	const auto list = filters->displayList();
 	Assert(oldPosition >= 0 && oldPosition < list.size());
 	Assert(newPosition >= 0 && newPosition < list.size());
 	const auto id = list[oldPosition].id();
@@ -823,6 +827,10 @@ void FiltersMenu::applyReorder(
 		&Data::ChatFilter::id
 	) | ranges::to_vector;
 	base::reorder(order, oldPosition, newPosition);
+	if (const auto j = ranges::find(order, Data::kCallsFilterId);
+			j != end(order)) {
+		order.erase(j);
+	}
 
 	_ignoreRefresh = true;
 	filters->saveOrder(order);

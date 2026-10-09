@@ -870,6 +870,9 @@ void ProcessFilterInvite(
 void SaveNewFilterPinned(
 		not_null<Main::Session*> session,
 		FilterId filterId) {
+	if (filterId == Data::kCallsFilterId) {
+		return;
+	}
 	const auto &order = session->data().pinnedChatsOrder(filterId);
 	auto &filters = session->data().chatsFilters();
 	const auto &filter = filters.applyUpdatedPinned(filterId, order);
