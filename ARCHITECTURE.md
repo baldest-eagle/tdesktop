@@ -245,17 +245,17 @@ The export subsystem (`Telegram/SourceFiles/export/`) converts chat data to HTML
 
 | Feature | Status | Notes |
 |---------|--------|-------|
-| A1: WebRTC Playout Delay & Jitter Clamping | **Not implemented** | Listed as "Planned" since Aug 20; no jitter buffer code found |
+| A1: WebRTC Playout Delay & Jitter Clamping | **Implemented** | tgcalls `390df85f9c`: `CustomNetEqFactory` NetEq clamp, `audio_jitter_buffer_min_delay_ms = 20` |
 | B1: Multi-Connection MTProto Download | **Unverified** | Commit exists but no parallel-download code in mtproto/api |
-| Wallet main menu entry | **Not found** | No menu entry or badge in codebase |
-| Replace "Calls" with folder/submenu | **Not found** | No submenu implementation |
-| CallButton → IconButton migration | **Partial** | lib_ui bump done; full migration unverified |
-| callCancelRipple (#c04646) | **Not found** | Color value absent from codebase |
-| "Pin to Grid" in history/view/search menus | **Not found** | Only in members context menu |
-| Titlebar close → hangup | **Not found** | No explicit wiring |
+| Wallet main menu entry | **Implemented** | Menu item with `Ui::NewBadge` under My Profile |
+| Replace "Calls" with folder/submenu | **Implemented** | "Calls" pseudo-folder (`kCallsFilterId = -2`) after "All"; main-menu popup button removed |
+| CallButton → IconButton migration | **Done** | `Calls::CallButton` adapter over `Ui::IconButton`, panels migrated |
+| callCancelRipple (#c04646) | **Implemented** | `Telegram/lib_ui/ui/colors.palette:571` |
+| "Pin to Grid" in history/view/search menus | **Done** | `Calls::AddPinToGridAction` in history and shared/search context menus |
+| Titlebar close → hangup | **Done** | `Panel::handleClose()` → `endCall()` |
 | Simulcast upscaling signaling | **Unverified** | No explicit simulcast code found |
 | TrackPeer cleanup (0b263e0608) | **Not found** | Commit reference not in log |
 
 ---
 
-> Last updated: September 9, 2026 | Branch nightly — 44 commits ahead of `upstream/dev` (diverged lineage)
+> Last updated: October 8, 2026 | Branch `fork-little-pieces`

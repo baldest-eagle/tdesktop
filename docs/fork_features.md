@@ -1,6 +1,6 @@
 # Telegram Desktop Fork — Requested Features, Tweaks & Customizations
 
-Working directory: `C:\Users\kyleh\tdesktop`, branch `nightly`
+Working directory: `C:\Users\kyleh\tdesktop`, branch `fork-little-pieces`
 
 ---
 
@@ -27,9 +27,9 @@ Working directory: `C:\Users\kyleh\tdesktop`, branch `nightly`
 - **Camera/people controls** — added to call controls
   - _Status: Done._ Camera controls present in call panel (members list, camera toggles).
 - **CallButton → IconButton** — convert base struct for style consistency
-  - _Status: Partially done._ lib_ui submodule bump in `aef8330b6c` addressed some style consistency; full CallButton→IconButton migration not yet verified.
+  - _Status: Done._ Commit `f4a0e4c4e4` adds a tdesktop-local `Calls::CallButton` adapter wrapping `Ui::IconButton` while preserving the `Ui::CallButton` contract; call panels migrated to it.
 - **callCancelRipple color** — added `callCancelRipple: #c04646` to `ui/colors.palette`
-  - _Status: NOT FOUND._ `#c04646` and `callCancelRipple` not present in codebase. The lib_ui bump commit `aef8330b6c` mentions "callCancelRipple color" but the value is absent from the fork.
+  - _Status: Done._ Commit `8aa4ec52e1`; present at `Telegram/lib_ui/ui/colors.palette:571`.
 - **Hidden Floating PiP Camera Preview** — removed small floating picture-in-picture webcam overlay from cluttering call layouts
   - _Status: Done._ Wide/grid mode removes obstructing floating on-screen buttons in `calls_group_panel.cpp:2811-2820` (`toggle(_hangup, false)` and related).
 
@@ -65,7 +65,7 @@ Working directory: `C:\Users\kyleh\tdesktop`, branch `nightly`
 - **Grid unpinning & removal** — explicit "Unpin / Remove from Screen" actions and dialogs for pinned feeds
   - _Status: Done._ `unpinFromScreen()` and unpin action dialog implemented.
 - **Pin to Grid context menu actions** — injected into history, view, and search menus
-  - _Status: PARTIALLY DONE._ Pin-to-screen actions present in members context menu (`calls_group_members.cpp:1437-1504`), but "Pin to Grid" specifically in history/view/search context menus not found. Language key `lng_group_call_context_pin_to_grid` missing.
+  - _Status: Done._ Commit `8aa4ec52e1` adds `Calls::AddPinToGridAction`, called from `history_inner_widget.cpp:3052` and `history_view_context_menu.cpp:1528` (shared/forwarded/search results); key `lng_group_call_context_pin_to_grid` present in `lang.strings:6481`.
 
 ## Floating Overlay — IMPLEMENTED
 
@@ -105,18 +105,18 @@ Working directory: `C:\Users\kyleh\tdesktop`, branch `nightly`
 ## Main Menu & Navigation
 
 - **Replace "Calls" button with folder/submenu** — show calls groups inline instead of opening popup box
-  - _Status: NOT FOUND._ No evidence of Calls folder/submenu replacement in the codebase.
+  - _Status: Done._ The main-menu "Calls" popup button is removed (`window_main_menu.cpp`); a local-only "Calls" pseudo-folder (`Data::kCallsFilterId = -2`) sits right after "All" in the folder strip and folder menu, listing channels with an active video chat. Membership lives in `ChatFilters::refreshCallsMembership()`; empty state uses `lng_no_active_calls`.
 - **Wallet** — main menu entry with green `NEW` badge under My Profile
-  - _Status: NOT FOUND._ Wallet references limited to `ton_common.cpp` namespace; no main menu entry with badge found.
+  - _Status: Done._ Commit `8aa4ec52e1`; `wallet` action in `window_main_menu.cpp` with `Ui::NewBadge::AddToRight(wallet)`.
 
 ## UI Tweaks & Polish — PARTIALLY DONE
 
 - **Remove obstructing floating on-screen buttons** — in wide/grid mode
   - _Status: Done._ Buttons removed in wide/grid mode (`calls_group_panel.cpp:2811-2820`).
 - **Wire titlebar close to hangup** — close button ends call
-  - _Status: NOT FOUND._ No explicit titlebar close-to-hangup wiring found.
+  - _Status: Done._ `Panel::handleClose()` in `calls_group_panel.cpp:3648` calls `endCall()` → `_call->hangup()`.
 - **Replace menu toggle icons** — screen share and message style icons
-  - _Status: NOT FOUND._ No evidence of icon replacement in codebase.
+  - _Status: Done._ Commit `4749468417` replaces them with vector SVG icons.
 - **Wire multi-pin click toggling + hover controls in grid mode**
   - _Status: PARTIALLY DONE._ Multi-pin actions exist; hover controls not fully verified.
 - **Window-level Ctrl+Shift+T shortcut** — for floating overlay
@@ -127,7 +127,7 @@ Working directory: `C:\Users\kyleh\tdesktop`, branch `nightly`
 - **Rich Tasks** — right-click message with checklist to mark items complete via `api_rich_tasks`
   - _Status: IMPLEMENTED (API layer)._ `api_rich_tasks.cpp/h` present with `toggle()`, `send()`, `sendAccumulated()`, `finishRequest()`. UI integration not fully verified.
 - **"Pin to Grid"** — in history, view, search context menus
-  - _Status: NOT FOUND._ Pin-to-screen actions exist in members context menu, but "Pin to Grid" in history/view/search menus not found.
+  - _Status: Done._ `Calls::AddPinToGridAction` wired into the chat history menu and the shared/forwarded/search result context menu (commit `8aa4ec52e1`).
 - **Screen target pinning prompt** — Screen 1 vs Screen 2 selection dialog
   - _Status: Done._ `promptPinTargetScreen()` implemented.
 - **Unpin Action Dialog** — unpin feeds directly from stream thumbnails and context menus
@@ -146,7 +146,7 @@ Working directory: `C:\Users\kyleh\tdesktop`, branch `nightly`
 - **SQLite PRAGMA Optimizations (C1)** — WAL journaling and `mmap_size` memory-mapped I/O tuning for local database speed
   - _Status: IMPLEMENTED._ `storage/storage_sqlite_pragmas.h` configures `PRAGMA journal_mode = WAL` and `PRAGMA mmap_size = 268435456`.
 - **WebRTC Playout Delay & Jitter Clamping (A1)** — jitter buffer optimization and reduced playout latency for live WebRTC audio/video streams
-  - _Status: NOT IMPLEMENTED._ Listed as "Planned" — no jitter buffer / playout delay code found. Remains unimplemented.
+  - _Status: Done._ Commit `e1b07fccd0` (tgcalls `390df85f9c`): `CustomNetEqFactory` clamps NetEq and `audio_jitter_buffer_min_delay_ms = 20` in `MediaManager.cpp:365`, `GroupInstanceCustomImpl.cpp:1566`, `v2/InstanceV2Impl.cpp:345`, `v2/InstanceV2ReferenceImpl.cpp:645`.
 
 ## Build & Toolchain — MIXED
 
@@ -155,7 +155,7 @@ Working directory: `C:\Users\kyleh\tdesktop`, branch `nightly`
 - **CMakeLists.txt** updated for new source files
   - _Status: Done._ Source files for calls, display coordinator, floating overlay, etc. all present.
 - **Language keys** — `lng_group_call_open_chat`, `lng_group_call_context_pin_to_grid`
-  - _Status: PARTIAL._ `lng_group_call_open_chat` present in `calls_group_members.cpp:1578`. `lng_group_call_context_pin_to_grid` NOT FOUND — missing from codebase.
+  - _Status: Done._ `lng_group_call_open_chat` present in `calls_group_members.cpp:1578`; `lng_group_call_context_pin_to_grid` present in `lang.strings:6481` (used by `calls_instance.cpp:1235`).
 
 ---
 
@@ -165,7 +165,7 @@ Working directory: `C:\Users\kyleh\tdesktop`, branch `nightly`
 |-----------|-------------|--------|
 | E3 | Ghost Mode (Decoupled Read Receipts) + Settings UI + Persistence | **DONE** |
 | B1 | Multi-Connection MTProto Chunk Downloading | **UNVERIFIED** — committed but no code found |
-| A1 | WebRTC Playout Delay & Jitter Clamping | **NOT STARTED** — still "Planned" |
+| A1 | WebRTC Playout Delay & Jitter Clamping | **DONE** — tgcalls `390df85f9c` clamps NetEq, 20ms min jitter delay |
 | C1 | SQLite PRAGMA Optimizations (WAL + mmap_size) | **DONE** |
 | — | Call UI & Controls (Grid, Chat Panel, Hangup, PiP hidden) | **DONE** |
 | — | DisplayCoordinator (multi-monitor, routing, Screen 1/2) | **DONE** |
@@ -176,16 +176,16 @@ Working directory: `C:\Users\kyleh\tdesktop`, branch `nightly`
 | — | Rich Tasks API layer (`api_rich_tasks`) | **DONE (API)** — UI integration unverified |
 | — | Export pipeline (dice, replies, wallpapers partial, stories missing) | **PARTIAL** |
 | — | Stories feature (gated by 4 TODO guards) | **NOT STARTED** |
-| — | Wallet main menu entry | **NOT FOUND** |
-| — | CallButton → IconButton migration | **PARTIAL** |
-| — | callCancelRipple color (#c04646) | **NOT FOUND** |
-| — | "Pin to Grid" context menu in history/view/search | **NOT FOUND** |
-| — | Replace "Calls" button with folder/submenu | **NOT FOUND** |
+| — | Wallet main menu entry | **DONE** |
+| — | CallButton → IconButton migration | **DONE** |
+| — | callCancelRipple color (#c04646) | **DONE** |
+| — | "Pin to Grid" context menu in history/view/search | **DONE** |
+| — | Replace "Calls" button with folder/submenu | **DONE** — Calls pseudo-folder |
 | — | Simulcast upscaling signaling | **NOT VERIFIED** |
 | — | TrackPeer endpoint routing cleanup (0b263e0608) | **NOT FOUND** |
-| — | Titlebar close → hangup wiring | **NOT FOUND** |
-| — | Menu toggle icon replacement | **NOT FOUND** |
+| — | Titlebar close → hangup wiring | **DONE** |
+| — | Menu toggle icon replacement | **DONE** |
 
 ---
 
-> Last updated: September 9, 2026 | Branch nightly — 44 commits ahead of `upstream/dev` (diverged lineage)
+> Last updated: October 8, 2026 | Branch `fork-little-pieces` — items 3-11 plus A1 implemented, Debug build verified.
