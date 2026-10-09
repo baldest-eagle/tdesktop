@@ -1178,8 +1178,8 @@ void ChannelData::clearGroupCall() {
 	}
 	owner().unregisterGroupCall(_call.get());
 	_call = nullptr;
-	session().changes().peerUpdated(this, UpdateFlag::GroupCall);
 	removeFlags(Flag::CallActive | Flag::CallNotEmpty);
+	session().changes().peerUpdated(this, UpdateFlag::GroupCall);
 }
 
 void ChannelData::setGroupCallDefaultJoinAs(PeerId peerId) {

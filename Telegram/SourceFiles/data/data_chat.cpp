@@ -256,8 +256,8 @@ void ChatData::clearGroupCall() {
 		owner().unregisterGroupCall(_call.get());
 		_call = nullptr;
 	}
-	session().changes().peerUpdated(this, UpdateFlag::GroupCall);
 	removeFlags(Flag::CallActive | Flag::CallNotEmpty);
+	session().changes().peerUpdated(this, UpdateFlag::GroupCall);
 }
 
 void ChatData::setGroupCallDefaultJoinAs(PeerId peerId) {
