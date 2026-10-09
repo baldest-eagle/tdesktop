@@ -122,6 +122,11 @@ void SubsectionTabs::setupHorizontal(
 		(bottom
 			? &st::chatTabsToggleIconBottomOver
 			: &st::chatTabsToggleIconTopOver));
+	tr::lng_edit_topics_tabs(
+	) | rpl::start_with_next([=](const QString &text) {
+		toggle->setAccessibleName(text);
+	}, toggle->lifetime());
+
 	toggle->setClickedCallback([=] {
 		toggleModes();
 	});
@@ -211,6 +216,11 @@ void SubsectionTabs::setupVertical(not_null<QWidget*> parent) {
 	toggle->setIconOverride(
 		&st::chatTabsToggleIconLeft,
 		&st::chatTabsToggleIconLeftOver);
+	tr::lng_edit_topics_tabs(
+	) | rpl::start_with_next([=](const QString &text) {
+		toggle->setAccessibleName(text);
+	}, toggle->lifetime());
+
 	toggle->setClickedCallback([=] {
 		toggleModes();
 	});
