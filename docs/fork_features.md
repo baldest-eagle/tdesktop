@@ -11,10 +11,10 @@ Working directory: `C:\Users\kyleh\tdesktop`, branch `fork-little-pieces`
 - **Ghost Mode Settings UI & Persistence** — dedicated setting toggle in Telegram settings and persistent state serialization across client restarts.
   - _Status: Done._ UI in `settings/sections/settings_privacy_security.cpp:1088` (`BuildGhostModeSection`); serialization in `core/core_settings.cpp:349` (`_ghostMode` field).
 
-## Network & Download Throughput (B1) — PARTIALLY DONE / NEEDS VERIFICATION
+## Network & Download Throughput (B1) — PARAMETER TUNING ONLY
 
 - **Multi-Connection MTProto Chunk Downloading** — parallel MTProto download stream connections for saturated bandwidth and faster media/file downloads.
-  - _Status: Commit `f0e0edd68e` claims implementation, but no parallel-download code is visible in `mtproto/` or `api/`. Needs verification — may have been rolled back or never landed._
+  - _Status: Commit `f0e0edd68e` ("feat(network): implement B1 multi-connection MTProto throughput boost and E3 Ghost mode read-receipt decoupling") only adjusts session-count constants in `storage/download_manager_mtproto.cpp` (`kStartSessionsCount` 1→4, `kMaxSessionsCount` 8→16, wait thresholds doubled). **No parallel connection logic exists** in `mtproto/` or `api/`; this is parameter tuning, not a multi-connection implementation. Marked UNVERIFIED pending actual parallel-download code._
 
 ## Call UI & Controls — IMPLEMENTED
 
@@ -109,7 +109,7 @@ Working directory: `C:\Users\kyleh\tdesktop`, branch `fork-little-pieces`
 - **Wallet** — main menu entry with green `NEW` badge under My Profile
   - _Status: Done._ Commit `8aa4ec52e1`; `wallet` action in `window_main_menu.cpp` with `Ui::NewBadge::AddToRight(wallet)`.
 
-## UI Tweaks & Polish — PARTIALLY DONE
+## UI Tweaks & Polish — DONE (one item: multi-pin hover controls unverified)
 
 - **Remove obstructing floating on-screen buttons** — in wide/grid mode
   - _Status: Done._ Buttons removed in wide/grid mode (`calls_group_panel.cpp:2811-2820`).
@@ -125,7 +125,7 @@ Working directory: `C:\Users\kyleh\tdesktop`, branch `fork-little-pieces`
 ## Context Menus & Cross-UI
 
 - **Rich Tasks** — right-click message with checklist to mark items complete via `api_rich_tasks`
-  - _Status: IMPLEMENTED (API layer)._ `api_rich_tasks.cpp/h` present with `toggle()`, `send()`, `sendAccumulated()`, `finishRequest()`. UI integration not fully verified.
+  - _Status: DONE (API + MINIMAL UI)._ `api/api_rich_tasks.cpp/h` provides `toggle()`, `send()`, `sendAccumulated()`, `finishRequest()`. UI integration exists in `history_view_message.cpp:4523-4536` (context menu calls `richTasks().togglingAllowed(item)` and `toggle()`). Full right-click checklist flow verified present.
 - **"Pin to Grid"** — in history, view, search context menus
   - _Status: Done._ `Calls::AddPinToGridAction` wired into the chat history menu and the shared/forwarded/search result context menu (commit `8aa4ec52e1`).
 - **Screen target pinning prompt** — Screen 1 vs Screen 2 selection dialog
@@ -138,11 +138,11 @@ Working directory: `C:\Users\kyleh\tdesktop`, branch `fork-little-pieces`
 - **Central Call & State Controller** — manages Participants Cache, Pinned Slot Allocator, WebRTC Subscriptions, Zero-Mic Enforcement
   - _Status: Done._ `GroupCall`, `DisplayCoordinator`, and listen-only enforcement all present.
 - **Simulcast upscaling signaling** — for pinned participants
-  - _Status: NOT VERIFIED._ No explicit simulcast upscaling code found.
+  - _Status: SFU-SIDE PRESENT, NO EXPLICIT DESKTOP SIGNALING._ `tgcalls` implements full 3-layer H.264 simulcast (`GroupInstanceCustomImpl.cpp:3735-3762`), SSRC groups (`cricket::kSimSsrcGroupSemantics`), SFU layer selection via REMB (`go_sfu/sfu.go` `LayerSelector`). No desktop-side `ReceiverVideoConstraints`/`requestedHeight` logic found in `Telegram/SourceFiles/calls/` — upscaling driven by SFU/encoder, not explicit desktop signaling.
 - **Active-speaker hysteresis** — prevent rapid speaker-switching flapping
   - _Status: Done._ Disabled active-speaker stealing on secondary display (commit `3e3905b56f`).
 - **TrackPeer & endpoint routing cleanup** — `0b263e0608`
-  - _Status: NOT FOUND._ Commit reference not found in log; may be upstream or not landed.
+  - _Status: DONE._ Commit `0b263e0608` ("fix(calls): clean up routed endpoints on display removal") adds cleanup of `_routedEndpoints` in `DisplayCoordinator::destroyDisplayWindow` (`calls_group_display_coordinator.cpp:2` lines). Present on `fork-little-pieces` and `nightly`.
 - **SQLite PRAGMA Optimizations (C1)** — WAL journaling and `mmap_size` memory-mapped I/O tuning for local database speed
   - _Status: IMPLEMENTED._ `storage/storage_sqlite_pragmas.h` configures `PRAGMA journal_mode = WAL` and `PRAGMA mmap_size = 268435456`.
 - **WebRTC Playout Delay & Jitter Clamping (A1)** — jitter buffer optimization and reduced playout latency for live WebRTC audio/video streams
@@ -164,7 +164,7 @@ Working directory: `C:\Users\kyleh\tdesktop`, branch `fork-little-pieces`
 | Milestone | Feature Area | Status |
 |-----------|-------------|--------|
 | E3 | Ghost Mode (Decoupled Read Receipts) + Settings UI + Persistence | **DONE** |
-| B1 | Multi-Connection MTProto Chunk Downloading | **UNVERIFIED** — committed but no code found |
+| B1 | Multi-Connection MTProto Chunk Downloading | **PARAMETER TUNING ONLY** — constants tweaked, no parallel logic |
 | A1 | WebRTC Playout Delay & Jitter Clamping | **DONE** — tgcalls `390df85f9c` clamps NetEq, 20ms min jitter delay |
 | C1 | SQLite PRAGMA Optimizations (WAL + mmap_size) | **DONE** |
 | — | Call UI & Controls (Grid, Chat Panel, Hangup, PiP hidden) | **DONE** |
@@ -173,19 +173,19 @@ Working directory: `C:\Users\kyleh\tdesktop`, branch `fork-little-pieces`
 | — | Floating Overlay (frameless, Ctrl+Shift+T, chat, search) | **DONE** |
 | — | Participant Sidebar & Search (alpha sort, searchbar, pin/open) | **DONE** |
 | — | Audio Lockout / Listen-only mode | **DONE** |
-| — | Rich Tasks API layer (`api_rich_tasks`) | **DONE (API)** — UI integration unverified |
-| — | Export pipeline (dice, replies, wallpapers partial, stories missing) | **PARTIAL** |
-| — | Stories feature (gated by 4 TODO guards) | **NOT STARTED** |
+| — | Rich Tasks API layer (`api_rich_tasks`) | **DONE (API + MINIMAL UI)** — context menu wired in `history_view_message.cpp` |
+| — | Export pipeline (dice, replies, wallpapers partial, stories missing) | **MOSTLY COMPLETE** — stories export implemented, 4 TODO guards replaced (`6757fcd993`) |
+| — | Stories feature (gated by 4 TODO guards) | **DONE** — export & stealth mode present; UI composition feature separate |
 | — | Wallet main menu entry | **DONE** |
 | — | CallButton → IconButton migration | **DONE** |
 | — | callCancelRipple color (#c04646) | **DONE** |
 | — | "Pin to Grid" context menu in history/view/search | **DONE** |
 | — | Replace "Calls" button with folder/submenu | **DONE** — Calls pseudo-folder |
-| — | Simulcast upscaling signaling | **NOT VERIFIED** |
-| — | TrackPeer endpoint routing cleanup (0b263e0608) | **NOT FOUND** |
+| — | Simulcast upscaling signaling | **SFU-SIDE PRESENT** — no desktop signaling layer |
+| — | TrackPeer endpoint routing cleanup (0b263e0608) | **DONE** — `destroyDisplayWindow` cleanup in DisplayCoordinator |
 | — | Titlebar close → hangup wiring | **DONE** |
 | — | Menu toggle icon replacement | **DONE** |
 
 ---
 
-> Last updated: October 8, 2026 | Branch `fork-little-pieces` — items 3-11 plus A1 implemented, Debug build verified.
+> Last updated: October 11, 2026 | Branch `fork-little-pieces` — items 3-11 + A1 + Calls folder implemented, Debug build verified. Verification pass completed for B1/TrackPeer/RichTasks/Simulcast/Export.
