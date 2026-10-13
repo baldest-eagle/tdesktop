@@ -251,6 +251,9 @@ void FillSponsoredMessageBar(
 			container,
 			st::dialogsCancelSearchInPeer);
 	if (rightHide) {
+		tr::lng_close() | rpl::start_with_next([=](const QString &text) {
+			rightHide->setAccessibleName(text);
+		}, rightHide->lifetime());
 		container->sizeValue(
 		) | rpl::on_next([=](const QSize &s) {
 			rightHide->moveToRight(st::buttonRadius, st::lineWidth);
