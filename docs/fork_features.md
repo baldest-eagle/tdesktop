@@ -138,7 +138,7 @@ Working directory: `C:\Users\kyleh\tdesktop`, branch `fork-little-pieces`
 - **Central Call & State Controller** — manages Participants Cache, Pinned Slot Allocator, WebRTC Subscriptions, Zero-Mic Enforcement
   - _Status: Done._ `GroupCall`, `DisplayCoordinator`, and listen-only enforcement all present.
 - **Simulcast upscaling signaling** — for pinned participants
-  - _Status: SFU-SIDE PRESENT, NO EXPLICIT DESKTOP SIGNALING._ `tgcalls` implements full 3-layer H.264 simulcast (`GroupInstanceCustomImpl.cpp:3735-3762`), SSRC groups (`cricket::kSimSsrcGroupSemantics`), SFU layer selection via REMB (`go_sfu/sfu.go` `LayerSelector`). No desktop-side `ReceiverVideoConstraints`/`requestedHeight` logic found in `Telegram/SourceFiles/calls/` — upscaling driven by SFU/encoder, not explicit desktop signaling.
+  - _Status: DONE (desktop signals now)._ Viewport computes `VideoQualityRequest{endpoint, quality}` (force-full for pinned/large/wide); `DisplayCoordinator` forwards whole request (endpoint + quality); panel calls `_call->requestVideoQuality(request.endpoint, request.quality)` for secondary displays and `VideoQuality::Full` on `pinToScreen`; unpin reverts to `Medium`. `requestVideoQuality` updates `_activeVideoTrack` and re-triggers `updateRequestedVideoChannels` (min/max + bandwidth downgrading).
 - **Active-speaker hysteresis** — prevent rapid speaker-switching flapping
   - _Status: Done._ Disabled active-speaker stealing on secondary display (commit `3e3905b56f`).
 - **TrackPeer & endpoint routing cleanup** — `0b263e0608`
@@ -181,7 +181,7 @@ Working directory: `C:\Users\kyleh\tdesktop`, branch `fork-little-pieces`
 | — | callCancelRipple color (#c04646) | **DONE** |
 | — | "Pin to Grid" context menu in history/view/search | **DONE** |
 | — | Replace "Calls" button with folder/submenu | **DONE** — Calls pseudo-folder |
-| — | Simulcast upscaling signaling | **SFU-SIDE PRESENT** — no desktop signaling layer |
+| — | Simulcast upscaling signaling | **DONE** — viewport/panel signal quality tiers on pin/unpin |
 | — | TrackPeer endpoint routing cleanup (0b263e0608) | **DONE** — `destroyDisplayWindow` cleanup in DisplayCoordinator |
 | — | Titlebar close → hangup wiring | **DONE** |
 | — | Menu toggle icon replacement | **DONE** |

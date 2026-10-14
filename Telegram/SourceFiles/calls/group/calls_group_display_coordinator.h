@@ -95,7 +95,7 @@ public:
 	[[nodiscard]] int displayCount() const;
 	[[nodiscard]] std::vector<int> activeScreenIndices() const;
 	[[nodiscard]] rpl::producer<int> displayCountChanged() const;
-	[[nodiscard]] rpl::producer<VideoEndpoint> qualityRequests() const;
+	[[nodiscard]] rpl::producer<Calls::VideoQualityRequest> qualityRequests() const;
 	[[nodiscard]] rpl::producer<VideoEndpoint> pinnedRemoved() const;
 
 	bool hasTrack(int displayIndex, const VideoEndpoint &endpoint) const;
@@ -116,7 +116,7 @@ private:
 	std::map<int, std::set<VideoEndpoint>> _routedEndpoints;
 	std::set<int> _destroying;
 	rpl::event_stream<int> _displayCountChanged;
-	rpl::event_stream<VideoEndpoint> _qualityRequests;
+	rpl::event_stream<Calls::VideoQualityRequest> _qualityRequests;
 	rpl::event_stream<VideoEndpoint> _pinnedRemoved;
 	rpl::lifetime _lifetime;
 

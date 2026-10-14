@@ -159,7 +159,7 @@ void DisplayCoordinator::createDisplayWindow(int displayIndex, QScreen *screen) 
 
 	display.viewport->qualityRequests(
 	) | rpl::on_next([=](const VideoQualityRequest &request) {
-		_qualityRequests.fire_copy(request.endpoint);
+		_qualityRequests.fire_copy(request);
 	}, display.viewport->lifetime());
 
 	_displayCountChanged.fire(static_cast<int>(_displays.size()));
@@ -505,7 +505,7 @@ rpl::producer<int> DisplayCoordinator::displayCountChanged() const {
 	return _displayCountChanged.events();
 }
 
-rpl::producer<VideoEndpoint> DisplayCoordinator::qualityRequests() const {
+rpl::producer<Calls::VideoQualityRequest> DisplayCoordinator::qualityRequests() const {
 	return _qualityRequests.events();
 }
 

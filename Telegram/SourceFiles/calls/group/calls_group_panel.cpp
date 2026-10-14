@@ -1435,15 +1435,16 @@ void Panel::setupMembers() {
 		routeVideoToDisplays();
 	}, _callLifetime);
 
-	// Handle quality requests from secondary displays
+	// Handle quality requests from secondary displays, honoring requested tier.
 	_displayCoordinator->qualityRequests(
-	) | rpl::on_next([=](const VideoEndpoint &endpoint) {
-		_call->requestVideoQuality(endpoint, VideoQuality::Full);
+	) | rpl::on_next([=](const VideoQualityRequest &request) {
+		_call->requestVideoQuality(request.endpoint, request.quality);
 	}, _callLifetime);
 
 	_displayCoordinator->pinnedRemoved(
 	) | rpl::on_next([=](const VideoEndpoint &endpoint) {
 		showInGrids(endpoint);
+		_call->requestVideoQuality(endpoint, VideoQuality::Medium);
 	}, _callLifetime);
 	_viewport->mouseInsideValue(
 	) | rpl::filter([=] {
@@ -1712,6 +1713,7 @@ void Panel::pinToScreen(int screenIndex, const VideoEndpoint &endpoint) {
 		return;
 	}
 	const auto row = _members ? _members->lookupRow(GroupCall::TrackPeer(it->second)) : nullptr;
+	_call->requestVideoQuality(endpoint, VideoQuality::Full);
 	if (!row) {
 		return;
 	}
