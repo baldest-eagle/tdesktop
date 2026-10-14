@@ -24,6 +24,13 @@ constexpr auto kStartWaitedInSession = 8 * kDownloadPartSize;
 constexpr auto kMaxWaitedInSession = 32 * kDownloadPartSize;
 constexpr auto kStartSessionsCount = 4;
 constexpr auto kMaxSessionsCount = 16;
+// B1: pre-warm a larger share of the session pool up-front so bulk
+// downloads saturate the link within the first dispatch pass instead of
+// waiting for lazy session creation under backlog thresholds.
+constexpr auto kPreWarmSessionsCount = 8;
+// B1: chunks/bytes allowed to be in-flight per MTProto session at
+// one time; raises the socket pipeline utilization on high-bandwidth links.
+constexpr auto kMaxRequestsPerSession = 16;
 constexpr auto kMaxTrackedSessionRemoves = 64;
 constexpr auto kRetryAddSessionTimeout = 4 * crl::time(1000);
 constexpr auto kRetryAddSessionSuccesses = 2;
@@ -110,11 +117,18 @@ void DownloadManagerMtproto::Queue::removeSession(int index) {
 }
 
 DownloadManagerMtproto::DcSessionBalanceData::DcSessionBalanceData()
-: maxWaitedAmount(kStartWaitedInSession) {
+// B1: per-session in-flight ceiling, raised from the gradual
+// kStartWaitedInSession ramp to kMaxRequestsPerSession chunks.
+: maxWaitedAmount(std::min(
+	kMaxRequestsPerSession * kDownloadPartSize,
+	kMaxWaitedInSession)) {
 }
 
 DownloadManagerMtproto::DcBalanceData::DcBalanceData()
-: sessions(kStartSessionsCount) {
+// B1: pre-warm the pool up to kPreWarmSessionsCount so dispatch can
+// fan out immediately on a large media task instead of lazily growing
+// from kStartSessionsCount as kick-in thresholds trigger.
+: sessions(kPreWarmSessionsCount) {
 }
 
 DownloadManagerMtproto::DownloadManagerMtproto(not_null<ApiWrap*> api)
