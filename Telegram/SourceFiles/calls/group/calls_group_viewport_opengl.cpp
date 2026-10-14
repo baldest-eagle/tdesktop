@@ -229,8 +229,10 @@ vec4 background() {
 
 [[nodiscard]] bool UseExpandForCamera(QSize original, QSize viewport) {
 	using namespace ::Media::Streaming;
-	const auto originalIsPortrait = original.height() > original.width();
-	const auto viewportIsPortrait = viewport.height() > viewport.width();
+	// Do not expand if original is portrait and viewport is landscape, or vice-versa,
+	// to prevent excessive cropping of faces in multi-pin scenarios.
+	const bool originalIsPortrait = original.height() > original.width();
+	const bool viewportIsPortrait = viewport.height() > viewport.width();
 	if (originalIsPortrait != viewportIsPortrait) {
 		return false;
 	}

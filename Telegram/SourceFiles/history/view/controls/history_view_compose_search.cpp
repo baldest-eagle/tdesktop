@@ -783,6 +783,12 @@ BottomBar::BottomBar(not_null<Ui::RpWidget*> parent, bool fastShowChooseFrom)
 	) | rpl::on_next([=](int way) {
 		_current = _current.current() + way;
 	}, lifetime());
+
+	_previous->setAccessibleName(tr::lng_shortcuts_media_previous(tr::now));
+	_next->setAccessibleName(tr::lng_shortcuts_media_next(tr::now));
+	_jumpToDate->setAccessibleName(tr::lng_sr_search_date(tr::now));
+	_chooseFromUser->setAccessibleName(tr::lng_search_messages_from(tr::now));
+	_showList->setAccessibleName(tr::lng_sr_message_list(tr::now));
 }
 
 bool BottomBar::handleKeyPress(not_null<QKeyEvent*> e) {

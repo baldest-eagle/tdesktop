@@ -875,8 +875,8 @@ git clone -b v$QT --depth=1 https://github.com/qt/qt5.git
 cd qt5
 git submodule update --init --recursive --depth=1 \
 	qtbase qtdeclarative qtwayland qtimageformats qtsvg qtshadertools
-find $PWD/../patches/qtbase_$QT -type f -print0 | sort -z | xargs -r0 git -C qtbase apply
-find $PWD/../patches/qtwayland_$QT -type f -print0 | sort -z | xargs -r0 git -C qtwayland apply
+
+
 cmake -B build . \
 	-DCMAKE_INSTALL_PREFIX=/usr/local \
 	-DBUILD_SHARED_LIBS=OFF \
@@ -1036,7 +1036,7 @@ COPY --link --from=tde2e /usr/src/tde2e-cache /
 
 COPY Telegram/build/patches patches
 RUN <<EOF
-patch -p1 -d /usr/lib64/gobject-introspection -i $PWD/patches/gobject-introspection.patch
+
 rm -rf patches
 EOF
 
