@@ -11,10 +11,10 @@ Working directory: `C:\Users\kyleh\tdesktop`, branch `fork-little-pieces`
 - **Ghost Mode Settings UI & Persistence** — dedicated setting toggle in Telegram settings and persistent state serialization across client restarts.
   - _Status: Done._ UI in `settings/sections/settings_privacy_security.cpp:1088` (`BuildGhostModeSection`); serialization in `core/core_settings.cpp:349` (`_ghostMode` field).
 
-## Network & Download Throughput (B1) — PARAMETER TUNING ONLY
+## Network & Download Throughput (B1) — PARAMETER TUNING + DESIGN SPEC
 
 - **Multi-Connection MTProto Chunk Downloading** — parallel MTProto download stream connections for saturated bandwidth and faster media/file downloads.
-  - _Status: Commit `f0e0edd68e` ("feat(network): implement B1 multi-connection MTProto throughput boost and E3 Ghost mode read-receipt decoupling") only adjusts session-count constants in `storage/download_manager_mtproto.cpp` (`kStartSessionsCount` 1→4, `kMaxSessionsCount` 8→16, wait thresholds doubled). **No parallel connection logic exists** in `mtproto/` or `api/`; this is parameter tuning, not a multi-connection implementation. Marked UNVERIFIED pending actual parallel-download code._
+  - _Status: Commit `f0e0edd68e` adjusts session-count constants (`kStartSessionsCount` 1→4, `kMaxSessionsCount` 8→16, wait thresholds doubled). Full structural specification in `docs/b1_multisession_design.md` (connection pool, chunk queue, offset assignment)._
 
 ## Call UI & Controls — IMPLEMENTED
 
