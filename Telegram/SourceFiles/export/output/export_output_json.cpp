@@ -1767,6 +1767,8 @@ QByteArray SerializeMessage(
 		pushAction(data.same
 			? "set_same_chat_wallpaper"
 			: "set_chat_wallpaper");
+		push("wallpaper_id", data.paperId);
+		push("for_both", data.both);
 		pushReplyToMsgId("message_id");
 	}, [&](const ActionBoostApply &data) {
 		pushActor();

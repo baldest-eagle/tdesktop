@@ -174,7 +174,7 @@ Working directory: `C:\Users\kyleh\tdesktop`, branch `fork-little-pieces`
 | — | Participant Sidebar & Search (alpha sort, searchbar, pin/open) | **DONE** |
 | — | Audio Lockout / Listen-only mode | **DONE** |
 | — | Rich Tasks API layer (`api_rich_tasks`) | **DONE (API + MINIMAL UI)** — context menu wired in `history_view_message.cpp` |
-| — | Export pipeline (dice, replies, wallpapers partial, stories missing) | **MOSTLY COMPLETE** — stories export implemented, 4 TODO guards replaced (`6757fcd993`) |
+| — | Export pipeline (dice, replies, wallpaper id, stories) | **VERIFIED** — HTML service text + JSON action (wallpaper_id/for_both), stories export, TODO guards replaced (`6757fcd993`) |
 | — | Stories feature (gated by 4 TODO guards) | **DONE** — export & stealth mode present; UI composition feature separate |
 | — | Wallet main menu entry | **DONE** |
 | — | CallButton → IconButton migration | **DONE** |
