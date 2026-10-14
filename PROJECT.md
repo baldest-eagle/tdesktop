@@ -48,7 +48,7 @@ The fork introduces custom enhancements across multiple subsystems:
 | 35 | Audio Lockout / Listen-Only Mode | Strict zero-mic capture prevention in `tgcalls` | M3 | docs/fork_features.md:56 |
 | 36 | Microphone Controls Removal | Hides mic/mute buttons in listen-only mode | M3 | docs/fork_features.md:57 |
 | 37 | Permanent Listen-Only Invariant | Controller drops outgoing audio descriptors | M3 | docs/fork_features.md:58 |
-| 38 | Calls Submenu in Main Menu | Integrates `Calls::ShowCallsMenu` into `window_main_menu` | M2 | docs/fork_features.md:61 |
+| 38 | Calls Folder (replaces main-menu Calls button) | Local-only Calls pseudo-filter pinned right after "All" | M2 | docs/fork_features.md:61 |
 | 39 | Wallet Entry with NEW Badge | TON wallet menu item under My Profile | M2 | docs/fork_features.md:62 |
 | 40 | Wide/Grid Obstructing Button Cleanup | Repositions floating controls in grid mode | M1 | docs/fork_features.md:65 |
 | 41 | Titlebar Close Wired to Hangup | Window close triggers call termination | M1 | docs/fork_features.md:66 |
@@ -68,6 +68,10 @@ The fork introduces custom enhancements across multiple subsystems:
 | 55 | Windows Native Build Guide | Documented MSVC 2022 build steps | M4 | docs/fork_features.md:86 |
 | 56 | CMakeLists.txt Source Synchronization | All fork sources registered in target | M4 | docs/fork_features.md:87 |
 | 57 | Fork Localization Language Keys | Complete language keys in `lang.strings` | M4 | docs/fork_features.md:88 |
+| 58 | Calls Folder Membership Refresh | Live add/remove of active video chats in the Calls folder | M2 | docs/fork_features.md:108 |
+| 59 | Simulcast Quality-Tier Signalling | Viewport/panel drive min/max tiers on pin and unpin | M1 | docs/fork_features.md:79 |
+| 60 | Group Call Flag-Clear Ordering | `CallNotEmpty` cleared before the `GroupCall` peer update | M3 | docs/fork_features.md:79 |
+| 61 | Export Service Actions (Chat Wallpaper) | `wallpaper_id` / `for_both` in the JSON export writer | M3 | docs/fork_features.md:177 |
 
 ## Milestones
 | # | Name | Scope | Dependencies | Status |
@@ -76,13 +80,13 @@ The fork introduces custom enhancements across multiple subsystems:
 | M2 | Navigation & Calls Menu Integration | Wire `Calls::ShowCallsMenu` into `window_main_menu.cpp`, verify Wallet menu item with NEW badge, verify Ghost Mode read receipt suppression | none | DONE (Gate: PASS, Auditor: CLEAN) |
 | M3 | Engine & Performance Subsystems | Verify/finalize SQLite PRAGMA C1 tuning in storage initialization and WebRTC jitter buffer clamping A1 in `tgcalls` | none | DONE (Gate: PASS, Auditor: CLEAN) |
 | M4 | Code Style & Windows Native Debug Build | Verify code style conformance with `REVIEW.md`/`AGENTS.md` (no single-line comments, crl::guard, MTP::Sender), execute and verify Windows Native Debug compilation (`cmake --build out --config Debug --target Telegram`) | M1, M2, M3 | IN_PROGRESS |
-| M5 | Final Milestone: E2E Integration & Verification | Pass 100% E2E test suite (Tiers 1-4) and adversarial coverage hardening (Tier 5) | M4 | IN_PROGRESS |
+| M5 | Final Milestone: E2E Integration & Verification | Pass 100% E2E test suite (Tiers 1-4) and adversarial coverage hardening (Tier 5) | M4 | DONE (713/713 pass, incl. Tier 5 wired into `run_all.py`) |
 
 ## Interface Contracts
 ### Calls::Group::FloatingOverlay ↔ Calls::Group::Panel
 - `FloatingOverlay::setupChatContent()` retrieves chat controller and parent `Ui::Show` instance from `Panel`, instantiates `MessagesUi`, and binds resize signals.
-### Calls::ShowCallsMenu ↔ Window::MainMenu
-- `Calls::ShowCallsMenu(not_null<Ui::PopupMenu*> menu, not_null<::Window::SessionController*> window)` dynamically populates active calls, start call, and history entries when user clicks Calls menu action.
+### Calls Folder ↔ ChatFilters / Window
+- The main-menu `Calls` popup button is removed. `Data::ChatFilters` synthesizes a local-only Calls filter (`Data::kCallsFilterId = -2`) into `displayList()`, inserted at index 1 and pinned, so it never participates in folder ordering or persistence. Membership comes from `ChatFilters::refreshCallsMembership()` plus `Data::Session::refreshCallsChatListEntry()`, and the empty state uses `lng_no_active_calls`.
 ### Storage Initialization ↔ SQLite Engine
 - `ApplySqlitePerformancePragmas` executes `PRAGMA journal_mode = WAL;`, `PRAGMA mmap_size = 268435456;`, `PRAGMA synchronous = NORMAL;`, `PRAGMA cache_size = -64000;`, `PRAGMA temp_store = MEMORY;` with fallback handling to `TRUNCATE`.
 

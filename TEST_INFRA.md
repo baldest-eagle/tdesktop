@@ -46,7 +46,7 @@
 | 35 | Audio Lockout / Listen-Only Mode | Audio / Microphone | docs/fork_features.md:56 | 5 | 5 | ✓ |
 | 36 | Microphone Controls Removal | Audio / Microphone | docs/fork_features.md:57 | 5 | 5 | ✓ |
 | 37 | Permanent Listen-Only Invariant | Audio / Microphone | docs/fork_features.md:58 | 5 | 5 | ✓ |
-| 38 | Calls Submenu in Main Menu | Main Menu & Navigation | docs/fork_features.md:61 | 5 | 5 | ✓ |
+| 38 | Calls Folder (replaces main-menu Calls button) | Calls Folder | docs/fork_features.md:61 | 5 | 5 | ✓ |
 | 39 | Wallet Entry with NEW Badge | Main Menu & Navigation | docs/fork_features.md:62 | 5 | 5 | ✓ |
 | 40 | Wide/Grid Obstructing Button Cleanup | UI Tweaks & Polish | docs/fork_features.md:65 | 5 | 5 | ✓ |
 | 41 | Titlebar Close Wired to Hangup | UI Tweaks & Polish | docs/fork_features.md:66 | 5 | 5 | ✓ |
@@ -66,10 +66,14 @@
 | 55 | Windows Native Build Guide | Build & Toolchain | docs/fork_features.md:86 | 5 | 5 | ✓ |
 | 56 | CMakeLists.txt Source Synchronization | Build & Toolchain | docs/fork_features.md:87 | 5 | 5 | ✓ |
 | 57 | Fork Localization Language Keys | Build & Toolchain | docs/fork_features.md:88 | 5 | 5 | ✓ |
+| 58 | Calls Folder Membership Refresh | Calls Folder | docs/fork_features.md:108 | 3 | 5 | ✓ |
+| 59 | Simulcast Quality-Tier Signalling on Pin/Unpin | Backend / Engine | docs/fork_features.md:79 | 5 | 5 | ✓ |
+| 60 | Group Call Flag-Clear Ordering | Backend / Engine | data/data_channel.cpp:1175 | 3 | 4 | ✓ |
+| 61 | Export Service Actions (Chat Wallpaper) | Export Pipeline | export/output/export_output_json.cpp:1765 | 3 | 3 | ✓ |
 
 ## Test Architecture
 - **Location**: `tests/e2e/`
-- **Invocation**: `py tests/e2e/run_all.py` (or `py tests/e2e/run_all.py --tier 1`, `--tier 2`, `--tier 3`, `--tier 4`)
+- **Invocation**: `py tests/e2e/run_all.py` (or `py tests/e2e/run_all.py --tier 1`, `--tier 2`, `--tier 3`, `--tier 4`, `--tier 5`)
 - **Exit Code Semantics**:
   - `0`: All tests passed successfully.
   - `1`: One or more test assertions failed or timed out.
@@ -80,9 +84,13 @@
   │   ├── __init__.py
   │   ├── assertions.py
   │   ├── call_simulator.py
+  │   ├── display_mock.py
   │   ├── grid_solver_oracle.py
+  │   ├── audio_jitter_oracle.py
   │   ├── mtproto_mock.py
-  │   └── storage_mock.py
+  │   ├── rich_tasks_oracle.py
+  │   ├── storage_mock.py
+  │   └── ui_simulator.py
   ├── tier1_features/
   │   ├── __init__.py
   │   ├── test_t1_privacy_network.py
@@ -112,6 +120,7 @@
   ├── tier4_scenarios/
   │   ├── __init__.py
   │   └── test_t4_real_world_scenarios.py
+  ├── test_adversarial_stress_oracle.py   # Tier 5
   └── run_all.py
   ```
 
@@ -122,14 +131,14 @@
 | 2 | Executive Stealth Chat & Call Review | F1 (Ghost Mode), F2 (Settings UI), F5 (Slide-out Chat), F25 (Floating Overlay), F30 (Chat Search) | High |
 | 3 | Heavy Media Ingestion & Chunk Download | F3 (Multi-Connection MTProto 16 parallel), F53 (SQLite PRAGMA C1 WAL/mmap) | Medium |
 | 4 | Multi-Monitor Trading / Monitoring Station | F11 (Multi-Monitor Stage), F12 (Dual Initial Prompt), F13 (Display Role Router), F14 (Async Video), F15 (Active-Speaker Isolation) | High |
-| 5 | Dynamic Interactive Sprint Planning | F45 (Rich Tasks / Interactive Checklists), F29 (Embedded Chat in Overlay), F38 (Calls Submenu) | Medium |
+| 5 | Dynamic Interactive Sprint Planning | F45 (Rich Tasks / Interactive Checklists), F29 (Embedded Chat in Overlay), F38 (Calls Folder) | Medium |
 | 6 | Fast-Paced Multi-Speaker Debate | F51 (Active-Speaker Hysteresis), F54 (WebRTC Jitter Clamping A1), F17 (Dynamic Grid 50/50), F49 (Central Controller) | High |
 | 7 | Webinar with Listen-Only Attendees | F35 (Audio Lockout), F36 (Mic Control Removal), F37 (Permanent Invariant), F33 (Sidebar Search), F34 (Quick Actions) | Medium |
 | 8 | Compact HUD Companion Overlay Workflow | F25 (Top-Most Overlay), F26 (Ctrl+Shift+T), F27 (Opacity Ctrl+Wheel), F28 (Drag & Esc), F29 (MessagesUi) | Medium |
 | 9 | Rapid Participant Inflow & Dynamic Re-sorting | F31 (Entry-Time Chronological Grid), F32 (Alphabetical Sidebar), F18 (Uncapped Grid Scaling) | High |
 | 10 | Pinned Panel Resizing & Splitter Adjustment | F19 (Pin Allocator), F20 (Dynamic Pinned Auto-Scaling), F22 (Adjustable Panel Sizes), F43 (Multi-Pin Hover) | Medium |
 | 11 | Cross-UI Context Menu Navigation Flow | F24 (Pin to Grid Context Menu), F46 (Cross-UI Pin), F47 (Screen Target Prompt), F48 (Thumbnail Unpin Dialog) | Medium |
-| 12 | Navigation & Wallet Inspection Flow | F38 (Calls Submenu in Main Menu), F39 (Wallet Entry with NEW Badge), F57 (Language Keys) | Low |
+| 12 | Navigation & Wallet Inspection Flow | F38 (Calls Folder replacing the menu button), F39 (Wallet Entry with NEW Badge), F57 (Language Keys) | Low |
 | 13 | Emergency Hangup & Fast Call Termination | F6 (End Call Button), F40 (Obstructing Button Cleanup), F41 (Titlebar Close Hangup) | Low |
 | 14 | Network Degradation & Multi-Connection Resilience | F3 (Multi-Connection DC Failover/Concurrency), F50 (Simulcast Upscaling Signaling) | High |
 | 15 | Overlay Keyboard Mastery & Focus Shift | F26 (Ctrl+Shift+T), F44 (Window-Level Ctrl+Shift+T), F28 (Escape Dismissal) | Medium |
@@ -149,8 +158,13 @@
 | 29 | End-to-End Fork System Lifecycle Integration | Full integration of all 13 categories from startup to call termination | High |
 
 ## Coverage Thresholds
-- **Tier 1 (Feature Coverage)**: ≥5 test cases per feature × 57 features = **285 test cases**
-- **Tier 2 (Boundary & Corner Cases)**: ≥5 test cases per feature × 57 features = **285 test cases**
-- **Tier 3 (Cross-Feature Combinations)**: Pairwise coverage across feature categories = **≥57 test cases**
+- **Tier 1 (Feature Coverage)**: feature test cases across all 61 features = **299 test cases**
+- **Tier 2 (Boundary & Corner Cases)**: boundary/corner cases across all 61 features = **302 test cases**
+- **Tier 3 (Cross-Feature Combinations)**: Pairwise coverage across feature categories = **60 test cases**
 - **Tier 4 (Real-World Application Scenarios)**: Realistic end-user workloads = **29 test cases**
-- **Total Suite Minimum**: 285 + 285 + 57 + 29 = **656 test cases**
+- **Tier 5 (Adversarial & Stress)**: Rollback, concurrency, fuzzing and stress workloads = **23 test cases**
+- **Total Suite**: 299 + 302 + 60 + 29 + 23 = **713 test cases**
+
+> **Scope note**: the suite is a deterministic simulation/oracle harness. It models the client
+> contracts in Python and does not execute the compiled binary, so a green run validates the
+> modelled behaviour rather than the shipped executable.

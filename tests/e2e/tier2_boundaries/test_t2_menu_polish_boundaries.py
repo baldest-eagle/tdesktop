@@ -1,6 +1,6 @@
 """
 Tier 2 Boundary & Corner Cases for Category 9 (Main Menu & Navigation) and Category 10 (UI Tweaks & Polish).
-Features 38–44: 35 Test Cases.
+Feature 38 is the Calls folder that replaced the main-menu Calls button.
 """
 
 import unittest
@@ -8,6 +8,7 @@ from tests.e2e.framework import (
     MenuControllerSimulator,
     CallWindowControlsSimulator,
     FloatingOverlaySimulator,
+    ChatFiltersSimulator,
     GeometryRect,
     assert_rect_equal,
 )
@@ -16,42 +17,45 @@ from tests.e2e.framework import (
 class TestTier2MenuPolishBoundaries(unittest.TestCase):
     """Tier 2 Boundary Tests for Features 38 through 44."""
 
-    # --- Feature 38: Calls Submenu in Main Menu Boundaries ---
+    # --- Feature 38: Calls Folder Boundaries ---
 
-    def test_t2_f38_01_submenu_with_50_active_group_calls(self):
-        """TEST-T2-F38-01: Calls submenu scales and scrolls smoothly with 50 active group calls."""
-        menu = MenuControllerSimulator()
-        active_calls = [{"peer_id": 3000 + i, "title": f"Group Call {i}"} for i in range(50)]
-        submenu = menu.get_calls_submenu(active_calls)
-        gc_items = [i for i in submenu if str(i.get("id", "")).startswith("gc_")]
-        self.assertEqual(len(gc_items), 50)
+    def test_t2_f38_01_many_custom_folders_keep_calls_at_index_one(self):
+        """TEST-T2-F38-01: 50 custom folders still leave Calls pinned at index 1."""
+        filters = ChatFiltersSimulator(
+            [{"id": i + 1, "title": f"Folder {i}"} for i in range(50)]
+        )
+        tabs = filters.ids_of_tabs()
+        self.assertEqual(len(tabs), 52)  # All + Calls + 50 folders
+        self.assertEqual(tabs[1], ChatFiltersSimulator.CALLS_FILTER_ID)
 
-    def test_t2_f38_02_submenu_group_call_with_very_long_title(self):
-        """TEST-T2-F38-02: Group call with 500-character title elides without breaking layout."""
-        menu = MenuControllerSimulator()
-        long_title = "Standup " * 50
-        submenu = menu.get_calls_submenu([{"peer_id": 3001, "title": long_title}])
-        self.assertIn("gc_3001", [i.get("id") for i in submenu])
+    def test_t2_f38_02_calls_id_never_persisted_in_saved_order(self):
+        """TEST-T2-F38-02: Saving a folder order strips the synthetic Calls id."""
+        filters = ChatFiltersSimulator([{"id": 5, "title": "A"}, {"id": 6, "title": "B"}])
+        saved = filters.save_order(filters.ids_of_tabs())
+        self.assertNotIn(ChatFiltersSimulator.CALLS_FILTER_ID, saved)
 
-    def test_t2_f38_03_submenu_group_call_with_unicode_and_emojis(self):
-        """TEST-T2-F38-03: Submenu title with emojis and RTL scripts renders accurately."""
-        menu = MenuControllerSimulator()
-        unicode_title = "🎉 Team Weekly (مراجعة) 🚀"
-        submenu = menu.get_calls_submenu([{"peer_id": 3002, "title": unicode_title}])
-        self.assertEqual(submenu[1]["text"], unicode_title)
+    def test_t2_f38_03_reorder_cannot_move_calls_out_of_second_slot(self):
+        """TEST-T2-F38-03: Dragging folders around leaves Calls at index 1."""
+        filters = ChatFiltersSimulator([{"id": 5, "title": "A"}, {"id": 6, "title": "B"}])
+        after = filters.reorder([6, ChatFiltersSimulator.CALLS_FILTER_ID, 5])
+        self.assertEqual(after[1], ChatFiltersSimulator.CALLS_FILTER_ID)
+        self.assertEqual(after[0], ChatFiltersSimulator.ALL_FILTER_ID)
 
-    def test_t2_f38_04_rapid_opening_closing_calls_submenu(self):
-        """TEST-T2-F38-04: 100 rapid popup openings and dismissals cause 0 leaks or crashes."""
-        menu = MenuControllerSimulator()
-        for _ in range(100):
-            sub = menu.get_calls_submenu([])
-            self.assertIsNotNone(sub)
+    def test_t2_f38_04_folder_shortcuts_skip_the_calls_filter(self):
+        """TEST-T2-F38-04: Keyboard folder shortcuts index only user folders (no Calls slot)."""
+        filters = ChatFiltersSimulator([{"id": 7, "title": "Work"}])
+        self.assertEqual(filters.lookup_id(0), 7)
+        self.assertNotEqual(filters.lookup_id(0), ChatFiltersSimulator.CALLS_FILTER_ID)
+        self.assertEqual(filters.lookup_id(9), ChatFiltersSimulator.ALL_FILTER_ID)
 
-    def test_t2_f38_05_group_call_terminated_while_submenu_open(self):
-        """TEST-T2-F38-05: Group call ending while submenu is open handles click safely."""
-        menu = MenuControllerSimulator()
-        submenu = menu.get_calls_submenu([{"peer_id": 9999, "title": "Ending Call"}])
-        self.assertEqual(submenu[1]["peer_id"], 9999)
+    def test_t2_f38_05_membership_clears_when_call_empties(self):
+        """TEST-T2-F38-05: A channel drops out of Calls once its call becomes empty."""
+        filters = ChatFiltersSimulator()
+        channel = {"id": 900, "title": "Townhall", "call_not_empty": True}
+        self.assertEqual(filters.refresh_calls_membership([channel]), [900])
+        channel["call_not_empty"] = False
+        self.assertEqual(filters.refresh_calls_membership([channel]), [])
+        self.assertEqual(filters.calls_members, [])
 
     # --- Feature 39: Wallet Entry with NEW Badge Boundaries ---
 

@@ -8,6 +8,7 @@ from tests.e2e.framework import (
     CallSimulator,
     MenuControllerSimulator,
     CallWindowControlsSimulator,
+    ChatFiltersSimulator,
     WebRtcAudioJitterOracle,
     assert_zero_audio_packets,
 )
@@ -16,12 +17,13 @@ from tests.e2e.framework import (
 class TestTier3AudioLockoutMenuInteractions(unittest.TestCase):
     """Tier 3 Pairwise Combinatorial Tests: Audio Lockout + Main Menu + WebRTC Jitter + Engine."""
 
-    def test_t3_01_listen_only_call_started_from_calls_submenu(self):
-        """TEST-T3-01: Starting group call from Calls submenu enforces zero-mic invariant."""
-        menu = MenuControllerSimulator()
-        submenu = menu.get_calls_submenu([])
-        start_call = next((i for i in submenu if i.get("id") == "start_call"), None)
-        self.assertIsNotNone(start_call)
+    def test_t3_01_listen_only_call_started_from_calls_folder(self):
+        """TEST-T3-01: Starting group call from the Calls folder enforces zero-mic invariant."""
+        filters = ChatFiltersSimulator()
+        self.assertEqual(
+            filters.ids_of_tabs()[1],
+            ChatFiltersSimulator.CALLS_FILTER_ID,
+        )
 
         sim = CallSimulator(is_listen_only=True)
         self.assertTrue(sim.is_listen_only)
@@ -63,11 +65,14 @@ class TestTier3AudioLockoutMenuInteractions(unittest.TestCase):
         self.assertTrue(oracle.fast_accelerate_active)
         self.assertGreaterEqual(oracle.playout_delay_ms, 50.0)
 
-    def test_t3_06_calls_submenu_lists_listen_only_active_call(self):
-        """TEST-T3-06: Calls submenu reflects active group call where user is in listen-only mode."""
-        menu = MenuControllerSimulator()
-        submenu = menu.get_calls_submenu([{"peer_id": 4001, "title": "Webinar (Listen-Only)"}])
-        self.assertEqual(submenu[1]["text"], "Webinar (Listen-Only)")
+    def test_t3_06_calls_folder_lists_listen_only_active_call(self):
+        """TEST-T3-06: Calls folder reflects an active group call where the user is listen-only."""
+        filters = ChatFiltersSimulator()
+        members = filters.refresh_calls_membership(
+            [{"id": 4001, "title": "Webinar (Listen-Only)", "call_not_empty": True}]
+        )
+        self.assertEqual(members, [4001])
+        self.assertEqual(filters.active_id, ChatFiltersSimulator.ALL_FILTER_ID)
 
     def test_t3_07_support_mode_listen_only_call_with_wallet_hidden(self):
         """TEST-T3-07: In support mode, Wallet is hidden while audio lockout remains enforced."""
@@ -140,10 +145,12 @@ class TestTier3AudioLockoutMenuInteractions(unittest.TestCase):
         self.assertEqual(controls.on_titlebar_close_clicked(), "HANGUP_CALL")
 
     def test_t3_15_full_listen_only_lifecycle_integration(self):
-        """TEST-T3-15: Complete lifecycle: Submenu open -> Join listen-only call -> NetEq Jitter A1 -> Hangup."""
-        menu = MenuControllerSimulator()
-        submenu = menu.get_calls_submenu([{"peer_id": 5001, "title": "Townhall"}])
-        self.assertEqual(submenu[1]["peer_id"], 5001)
+        """TEST-T3-15: Lifecycle: Calls folder -> join listen-only call -> NetEq (A1) -> Hangup."""
+        filters = ChatFiltersSimulator()
+        members = filters.refresh_calls_membership(
+            [{"id": 5001, "title": "Townhall", "call_not_empty": True}]
+        )
+        self.assertEqual(members, [5001])
 
         sim = CallSimulator(is_listen_only=True)
         oracle = WebRtcAudioJitterOracle(min_playout_delay_ms=50.0)

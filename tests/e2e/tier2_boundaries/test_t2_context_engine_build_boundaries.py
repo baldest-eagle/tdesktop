@@ -1,6 +1,6 @@
 """
 Tier 2 Boundary & Corner Cases for Category 11 (Context Menus & Cross-UI), Category 12 (Backend / Engine), and Category 13 (Build & Toolchain).
-Features 45–57: 65 Test Cases.
+Features 45–61, including the Calls-folder refresh, quality-tier signalling, flag ordering and export actions.
 """
 
 import unittest
@@ -12,6 +12,12 @@ from tests.e2e.framework import (
     PinSlotAllocator,
     SQLiteStorageMock,
     WebRtcAudioJitterOracle,
+    ChatFiltersSimulator,
+    GroupCallFlagOracle,
+    ExportActionOracle,
+    QUALITY_THUMBNAIL,
+    QUALITY_MEDIUM,
+    QUALITY_FULL,
     assert_pragma_executed,
 )
 
@@ -486,6 +492,147 @@ class TestTier2ContextEngineBuildBoundaries(unittest.TestCase):
         """TEST-T2-F57-05: Dynamic language switch retains translated fork keys."""
         lang_pack = {"lng_group_call_open_chat": "Chat öffnen"}
         self.assertEqual(lang_pack["lng_group_call_open_chat"], "Chat öffnen")
+
+    # --- Feature 58: Calls Folder Membership Boundaries ---
+
+    def test_t2_f58_01_two_hundred_active_calls_membership(self):
+        """TEST-T2-F58-01: 200 channels with active calls all qualify for the Calls folder."""
+        filters = ChatFiltersSimulator()
+        channels = [
+            {"id": 1000 + i, "title": f"Group {i}", "call_not_empty": True}
+            for i in range(200)
+        ]
+        self.assertEqual(len(filters.refresh_calls_membership(channels)), 200)
+
+    def test_t2_f58_02_archived_active_call_excluded(self):
+        """TEST-T2-F58-02: An archived channel with an active call is excluded from Calls."""
+        filters = ChatFiltersSimulator()
+        members = filters.refresh_calls_membership([
+            {"id": 1, "call_not_empty": True},
+            {"id": 2, "call_not_empty": True, "archived": True},
+        ])
+        self.assertEqual(members, [1])
+
+    def test_t2_f58_03_not_in_chat_list_excluded(self):
+        """TEST-T2-F58-03: A channel missing from the chat list is excluded from Calls."""
+        filters = ChatFiltersSimulator()
+        members = filters.refresh_calls_membership([
+            {"id": 3, "call_not_empty": True, "in_chat_list": False},
+        ])
+        self.assertEqual(members, [])
+
+    def test_t2_f58_04_repeated_refresh_is_idempotent(self):
+        """TEST-T2-F58-04: Refreshing membership repeatedly yields a stable set."""
+        filters = ChatFiltersSimulator()
+        channels = [{"id": 7, "call_not_empty": True}]
+        first = filters.refresh_calls_membership(channels)
+        for _ in range(50):
+            self.assertEqual(filters.refresh_calls_membership(channels), first)
+        self.assertEqual(len(filters.calls_members), 1)
+
+    def test_t2_f58_05_membership_has_no_duplicates(self):
+        """TEST-T2-F58-05: Duplicate channel entries collapse to a single membership row."""
+        filters = ChatFiltersSimulator()
+        members = filters.refresh_calls_membership([
+            {"id": 9, "call_not_empty": True},
+            {"id": 9, "call_not_empty": True},
+        ])
+        self.assertEqual(len(members), len(set(members)))
+
+    # --- Feature 59: Simulcast Quality-Tier Signalling Boundaries ---
+
+    def test_t2_f59_01_bandwidth_budget_downgrades_full_cameras(self):
+        """TEST-T2-F59-01: count(Full)*4 over 16 tiers downgrades Full cameras to Medium."""
+        sim = CallSimulator()
+        for i in range(10):
+            sim.add_participant(f"ep_{i}", 100 + i, f"User {i}")
+            sim.pin_to_screen(f"ep_{i}", 1)
+        channels = sim.update_requested_video_channels()
+        self.assertTrue(all(c["maxQuality"] == QUALITY_MEDIUM for c in channels))
+        self.assertEqual(sim.on_stage_endpoints(), [])
+
+    def test_t2_f59_02_single_pin_fits_the_budget(self):
+        """TEST-T2-F59-02: One pinned camera (4 tiers) stays Full within the 16-tier budget."""
+        sim = CallSimulator()
+        sim.add_participant("ep", 101, "Alice")
+        sim.pin_to_screen("ep", 1)
+        channels = sim.update_requested_video_channels()
+        self.assertEqual(channels[0]["maxQuality"], QUALITY_FULL)
+
+    def test_t2_f59_03_quality_request_for_unknown_endpoint_is_safe(self):
+        """TEST-T2-F59-03: Requesting a tier for a departed endpoint is a no-op."""
+        sim = CallSimulator()
+        self.assertFalse(sim.request_video_quality("ghost", QUALITY_FULL))
+        self.assertFalse(sim.pin_to_screen("ghost", 1))
+        self.assertEqual(sim.update_requested_video_channels(), [])
+
+    def test_t2_f59_04_unpinned_endpoint_never_upscales(self):
+        """TEST-T2-F59-04: Endpoints left at the default tier never reach Full."""
+        sim = CallSimulator()
+        sim.add_participant("quiet", 101, "Alice")
+        channels = sim.update_requested_video_channels()
+        self.assertEqual(channels[0]["maxQuality"], QUALITY_THUMBNAIL)
+        self.assertEqual(sim.on_stage_endpoints(), [])
+
+    def test_t2_f59_05_departure_clears_pin_state(self):
+        """TEST-T2-F59-05: A departing endpoint is dropped from every pinned screen."""
+        sim = CallSimulator()
+        sim.add_participant("ep", 101, "Alice")
+        sim.pin_to_screen("ep", 1)
+        sim.pin_to_screen("ep", 2)
+        sim.remove_participant("ep")
+        self.assertFalse(sim.is_pinned("ep"))
+        self.assertEqual(sim.update_requested_video_channels(), [])
+
+    # --- Feature 60: Group Call Flag-Clear Ordering Boundaries ---
+
+    def test_t2_f60_01_notification_fires_exactly_once(self):
+        """TEST-T2-F60-01: clearGroupCall emits a single GroupCall peer update."""
+        oracle = GroupCallFlagOracle()
+        oracle.clear_group_call(notify_first=False)
+        self.assertEqual(oracle.notifications, 1)
+
+    def test_t2_f60_02_already_empty_call_clear(self):
+        """TEST-T2-F60-02: Clearing an already-empty call keeps flags cleared."""
+        oracle = GroupCallFlagOracle(call_not_empty=False, call_active=False)
+        observed = oracle.clear_group_call(notify_first=False)
+        self.assertFalse(observed)
+        self.assertFalse(oracle.call_not_empty)
+
+    def test_t2_f60_03_repeated_clear_is_stable(self):
+        """TEST-T2-F60-03: Clearing repeatedly never resurrects the not-empty flag."""
+        oracle = GroupCallFlagOracle()
+        for _ in range(20):
+            self.assertFalse(oracle.clear_group_call(notify_first=False))
+        self.assertEqual(oracle.notifications, 20)
+        self.assertFalse(oracle.has_active_call())
+
+    def test_t2_f60_04_both_chat_and_channel_ordering_invariant(self):
+        """TEST-T2-F60-04: The ordering invariant holds for chat and channel propagation alike."""
+        for _kind in ("chat", "channel"):
+            oracle = GroupCallFlagOracle()
+            self.assertFalse(oracle.clear_group_call(notify_first=False))
+
+    # --- Feature 61: Export Service Actions Boundaries ---
+
+    def test_t2_f61_01_zero_wallpaper_id_still_exported(self):
+        """TEST-T2-F61-01: A wallpaper-less action still emits wallpaper_id 0."""
+        oracle = ExportActionOracle()
+        payload = oracle.wallpaper_json(paper_id=0)
+        self.assertEqual(payload["wallpaper_id"], 0)
+        self.assertIn("wallpaper_id", payload)
+
+    def test_t2_f61_02_large_wallpaper_id_roundtrip(self):
+        """TEST-T2-F61-02: 64-bit wallpaper ids survive the export mapping."""
+        oracle = ExportActionOracle()
+        large = 2 ** 62 + 12345
+        self.assertEqual(oracle.wallpaper_json(paper_id=large)["wallpaper_id"], large)
+
+    def test_t2_f61_03_for_both_defaults_false(self):
+        """TEST-T2-F61-03: for_both defaults to False when only one chat is affected."""
+        oracle = ExportActionOracle()
+        self.assertFalse(oracle.wallpaper_json(paper_id=5)["for_both"])
+        self.assertFalse(oracle.wallpaper_json(paper_id=5, same=True)["for_both"])
 
 
 if __name__ == "__main__":

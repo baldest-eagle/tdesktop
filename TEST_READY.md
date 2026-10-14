@@ -2,24 +2,30 @@
 
 ## Test Runner
 - **Command**: `py tests/e2e/run_all.py`
-- **Expected**: All 659 tests pass with exit code 0
+- **Expected**: All 713 tests pass with exit code 0
 - **Filtered Invocations**:
   - Tier 1 only: `py tests/e2e/run_all.py --tier 1`
   - Tier 2 only: `py tests/e2e/run_all.py --tier 2`
   - Tier 3 only: `py tests/e2e/run_all.py --tier 3`
   - Tier 4 only: `py tests/e2e/run_all.py --tier 4`
-  - By Feature ID: `py tests/e2e/run_all.py --feature f01`
-  - By Category: `py tests/e2e/run_all.py --category "Privacy & Ghost Mode"`
+  - Tier 5 adversarial only: `py tests/e2e/run_all.py --tier 5`
+  - By Feature ID: `py tests/e2e/run_all.py --feature f38`
+  - By Category: `py tests/e2e/run_all.py --category "Calls Folder"`
   - With Export: `py tests/e2e/run_all.py --json reports/e2e_results.json --junit reports/junit.xml`
 
 ## Coverage Summary
 | Tier | Count | Description |
 |------|------:|-------------|
-| 1. Feature Coverage | 285 | 5 test cases per feature across all 57 features (13 categories) |
-| 2. Boundary & Corner Cases | 285 | 5 boundary/corner test cases per feature across all 57 features |
+| 1. Feature Coverage | 299 | Feature test cases across all 61 features (14 categories) |
+| 2. Boundary & Corner Cases | 302 | Boundary/corner test cases across all 61 features |
 | 3. Cross-Feature Combinations | 60 | Pairwise combinatorial interactions between major subsystem features |
 | 4. Real-World Application Workloads | 29 | Comprehensive multi-step real-world end-user workflow application scenarios |
-| **Total** | **659** | Complete opaque-box automated test coverage (exceeds 656 minimum) |
+| 5. Adversarial & Stress | 23 | Rollback, concurrency, fuzzing and 10k-packet stress coverage |
+| **Total** | **713** | Complete opaque-box automated test coverage |
+
+> Scope note: this suite is a deterministic **simulation/oracle harness** — it models the
+> client contracts in Python and does not execute the C++ binary. A green run validates the
+> modelled behaviour, not the shipped executable.
 
 ## Feature Checklist
 | # | Feature | Category | Tier 1 | Tier 2 | Tier 3 | Tier 4 |
@@ -61,7 +67,7 @@
 | 35 | Audio Lockout / Listen-Only Mode | Audio / Microphone | 5 | 5 | ✓ | ✓ |
 | 36 | Microphone Controls Removal | Audio / Microphone | 5 | 5 | ✓ | ✓ |
 | 37 | Permanent Listen-Only Invariant | Audio / Microphone | 5 | 5 | ✓ | ✓ |
-| 38 | Calls Submenu in Main Menu | Main Menu & Navigation | 5 | 5 | ✓ | ✓ |
+| 38 | Calls Folder (replaces main-menu Calls button) | Main Menu & Navigation | 5 | 5 | ✓ | ✓ |
 | 39 | Wallet Entry with NEW Badge | Main Menu & Navigation | 5 | 5 | ✓ | ✓ |
 | 40 | Wide/Grid Obstructing Button Cleanup | UI Tweaks & Polish | 5 | 5 | ✓ | ✓ |
 | 41 | Titlebar Close Wired to Hangup | UI Tweaks & Polish | 5 | 5 | ✓ | ✓ |
@@ -81,3 +87,7 @@
 | 55 | Windows Native Build Guide | Build & Toolchain | 5 | 5 | ✓ | ✓ |
 | 56 | CMakeLists.txt Source Synchronization | Build & Toolchain | 5 | 5 | ✓ | ✓ |
 | 57 | Fork Localization Language Keys | Build & Toolchain | 5 | 5 | ✓ | ✓ |
+| 58 | Calls Folder Membership Refresh | Calls Folder | 3 | 5 | ✓ | ✓ |
+| 59 | Simulcast Quality-Tier Signalling on Pin/Unpin | Backend / Engine | 5 | 5 | ✓ | ✓ |
+| 60 | Group Call Flag-Clear Ordering | Backend / Engine | 3 | 4 | ✓ | ✓ |
+| 61 | Export Service Actions (Chat Wallpaper) | Export Pipeline | 3 | 3 | ✓ | ✓ |

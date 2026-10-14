@@ -11,6 +11,7 @@ from tests.e2e.framework import (
     FloatingOverlaySimulator,
     MenuControllerSimulator,
     CallWindowControlsSimulator,
+    ChatFiltersSimulator,
     MtprotoMock,
     SQLiteStorageMock,
     TdataStreamMock,
@@ -141,13 +142,17 @@ class TestTier4RealWorldScenarios(unittest.TestCase):
     def test_t4_s05_dynamic_interactive_sprint_planning(self):
         """Scenario 5: Dynamic Interactive Sprint Planning (F45, F29, F38)."""
         menu = MenuControllerSimulator()
+        filters = ChatFiltersSimulator()
         overlay = FloatingOverlaySimulator()
         md_checklist = "- [ ] Task 1: API Spec\n- [ ] Task 2: Implement UI\n- [ ] Task 3: Deploy"
         oracle = RichTasksOracle(message_id=101, initial_markdown=md_checklist)
 
-        # 1. Check Calls submenu
-        submenu = menu.get_calls_submenu([{"peer_id": 5001, "title": "Sprint Planning"}])
-        self.assertEqual(submenu[1]["peer_id"], 5001)
+        # 1. The Calls folder is present and lists the active sprint call
+        members = filters.refresh_calls_membership(
+            [{"id": 5001, "title": "Sprint Planning", "call_not_empty": True}]
+        )
+        self.assertEqual(members, [5001])
+        self.assertEqual(filters.ids_of_tabs()[1], ChatFiltersSimulator.CALLS_FILTER_ID)
 
         # 2. Embed chat inside overlay
         overlay.toggle_visibility()
@@ -314,10 +319,13 @@ class TestTier4RealWorldScenarios(unittest.TestCase):
         self.assertEqual(menu.menu_items[1]["id"], "wallet")
         self.assertEqual(menu.menu_items[1]["badge"], "NEW")
 
-        # 2. Check Calls submenu structure
-        submenu = menu.get_calls_submenu([{"peer_id": 101, "title": "Dev Sync"}])
-        self.assertIn("header_groupcalls", [i["id"] for i in submenu])
-        self.assertEqual(submenu[1]["text"], "Dev Sync")
+        # 2. Check the Calls folder replaces the old menu button
+        filters = ChatFiltersSimulator()
+        self.assertNotIn("calls", [i["id"] for i in menu.menu_items])
+        members = filters.refresh_calls_membership(
+            [{"id": 101, "title": "Dev Sync", "call_not_empty": True}]
+        )
+        self.assertEqual(members, [101])
 
     def test_t4_s13_emergency_hangup_and_fast_call_termination(self):
         """Scenario 13: Emergency Hangup & Fast Call Termination (F6, F40, F41)."""

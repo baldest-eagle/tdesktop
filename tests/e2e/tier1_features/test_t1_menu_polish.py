@@ -1,6 +1,6 @@
 """
 Tier 1 Tests for Category 9 (Main Menu & Navigation) and Category 10 (UI Tweaks & Polish).
-Features 38–44: 35 Test Cases.
+Feature 38 is the Calls folder that replaced the main-menu Calls button.
 """
 
 import unittest
@@ -8,6 +8,7 @@ from tests.e2e.framework import (
     MenuControllerSimulator,
     CallWindowControlsSimulator,
     FloatingOverlaySimulator,
+    ChatFiltersSimulator,
     GeometryRect,
     assert_rect_equal,
 )
@@ -16,52 +17,45 @@ from tests.e2e.framework import (
 class TestTier1MenuPolish(unittest.TestCase):
     """Tier 1 Test Suite for Features 38 through 44."""
 
-    # --- Feature 38: Calls Submenu in Main Menu ---
+    # --- Feature 38: Calls Folder (replaces the main-menu Calls button) ---
 
-    def test_t1_f38_01_calls_menu_item_has_submenu(self):
-        """TEST-T1-F38-01: Calls entry in main menu is configured with submenu flag."""
+    def test_t1_f38_01_calls_button_removed_from_main_menu(self):
+        """TEST-T1-F38-01: Main menu no longer exposes a Calls popup button."""
         menu = MenuControllerSimulator()
-        calls_item = next((item for item in menu.menu_items if item.get("id") == "calls"), None)
-        self.assertIsNotNone(calls_item)
-        self.assertTrue(calls_item.get("has_submenu"))
+        self.assertNotIn("calls", [i.get("id") for i in menu.menu_items])
 
-    def test_t1_f38_02_dynamic_group_calls_in_submenu(self):
-        """TEST-T1-F38-02: Active group calls appear dynamically in Calls submenu."""
-        menu = MenuControllerSimulator()
-        active_calls = [
-            {"peer_id": 3001, "title": "Engineering Standup"},
-            {"peer_id": 3002, "title": "Design Review"},
-        ]
-        submenu = menu.get_calls_submenu(active_calls)
-        group_call_items = [i for i in submenu if str(i.get("id", "")).startswith("gc_")]
-        self.assertEqual(len(group_call_items), 2)
-        self.assertEqual(group_call_items[0]["text"], "Engineering Standup")
-        self.assertEqual(group_call_items[1]["text"], "Design Review")
+    def test_t1_f38_02_calls_filter_sits_right_after_all(self):
+        """TEST-T1-F38-02: Calls pseudo-filter is inserted at index 1, right after "All"."""
+        filters = ChatFiltersSimulator()
+        tabs = filters.ids_of_tabs()
+        self.assertEqual(tabs[0], ChatFiltersSimulator.ALL_FILTER_ID)
+        self.assertEqual(tabs[1], ChatFiltersSimulator.CALLS_FILTER_ID)
 
-    def test_t1_f38_03_calls_submenu_header_and_structure(self):
-        """TEST-T1-F38-03: Submenu contains Group Calls header, Start Call, and Calls history."""
-        menu = MenuControllerSimulator()
-        submenu = menu.get_calls_submenu([])
-        ids = [i.get("id") for i in submenu]
-        self.assertIn("header_groupcalls", ids)
-        self.assertIn("start_call", ids)
-        self.assertIn("call_history", ids)
+    def test_t1_f38_03_calls_filter_is_local_only(self):
+        """TEST-T1-F38-03: Calls is synthetic and never persisted in the folder list."""
+        filters = ChatFiltersSimulator([{"id": 1, "title": "Work"}])
+        self.assertNotIn(
+            ChatFiltersSimulator.CALLS_FILTER_ID,
+            [f["id"] for f in filters.list()],
+        )
+        self.assertTrue(filters.calls_filter()["local_only"])
 
-    def test_t1_f38_04_start_call_action_presence(self):
-        """TEST-T1-F38-04: 'Start Call' action item is present with create_call icon."""
-        menu = MenuControllerSimulator()
-        submenu = menu.get_calls_submenu([])
-        start_call = next((i for i in submenu if i.get("id") == "start_call"), None)
-        self.assertIsNotNone(start_call)
-        self.assertEqual(start_call.get("icon"), "create_call")
+    def test_t1_f38_04_folder_tabs_visible_without_custom_folders(self):
+        """TEST-T1-F38-04: hasTabs() is true even for a default account with no user folders."""
+        filters = ChatFiltersSimulator()
+        self.assertFalse(filters.has())
+        self.assertTrue(filters.has_tabs())
 
-    def test_t1_f38_05_call_history_action_presence(self):
-        """TEST-T1-F38-05: 'Calls' history action item is present with history icon."""
-        menu = MenuControllerSimulator()
-        submenu = menu.get_calls_submenu([])
-        hist = next((i for i in submenu if i.get("id") == "call_history"), None)
-        self.assertIsNotNone(hist)
-        self.assertEqual(hist.get("icon"), "history")
+    def test_t1_f38_05_calls_folder_lists_only_active_video_chats(self):
+        """TEST-T1-F38-05: Membership needs a non-empty call, in chat list and not archived."""
+        filters = ChatFiltersSimulator()
+        members = filters.refresh_calls_membership([
+            {"id": 101, "title": "Standup", "call_not_empty": True},
+            {"id": 102, "title": "Quiet group", "call_not_empty": False},
+            {"id": 103, "title": "Archived call", "call_not_empty": True, "archived": True},
+            {"id": 104, "title": "Left group", "call_not_empty": True, "in_chat_list": False},
+        ])
+        self.assertEqual(members, [101])
 
     # --- Feature 39: Wallet Entry with NEW Badge ---
 

@@ -1,6 +1,6 @@
 """
 Tier 1 Tests for Category 11 (Context Menus & Cross-UI), Category 12 (Backend / Engine), and Category 13 (Build & Toolchain).
-Features 45–57: 65 Test Cases.
+Features 45–61, including the Calls-folder refresh, quality-tier signalling, flag ordering and export actions.
 """
 
 import unittest
@@ -11,6 +11,12 @@ from tests.e2e.framework import (
     PinSlotAllocator,
     SQLiteStorageMock,
     WebRtcAudioJitterOracle,
+    ChatFiltersSimulator,
+    GroupCallFlagOracle,
+    ExportActionOracle,
+    QUALITY_THUMBNAIL,
+    QUALITY_MEDIUM,
+    QUALITY_FULL,
     assert_pragma_executed,
 )
 
@@ -523,6 +529,131 @@ class TestTier1ContextEngineBuild(unittest.TestCase):
             "lng_confcall_create_call": "Start Call",
         }
         self.assertTrue(all(len(v) > 0 for v in lang_keys.values()))
+
+    # --- Feature 58: Calls Folder Membership Refresh ---
+
+    def test_t1_f58_01_membership_tracks_call_starts(self):
+        """TEST-T1-F58-01: A group starting a video chat appears in Calls membership."""
+        filters = ChatFiltersSimulator()
+        members = filters.refresh_calls_membership(
+            [{"id": 111, "title": "Standup", "call_not_empty": True}]
+        )
+        self.assertEqual(members, [111])
+        self.assertEqual(filters.calls_members, [111])
+
+    def test_t1_f58_02_membership_tracks_call_ends(self):
+        """TEST-T1-F58-02: When the video chat empties the channel leaves Calls membership."""
+        filters = ChatFiltersSimulator()
+        filters.refresh_calls_membership(
+            [{"id": 111, "title": "Standup", "call_not_empty": True}]
+        )
+        members = filters.refresh_calls_membership(
+            [{"id": 111, "title": "Standup", "call_not_empty": False}]
+        )
+        self.assertEqual(members, [])
+
+    def test_t1_f58_03_empty_calls_folder_state(self):
+        """TEST-T1-F58-03: Calls folder without active calls still renders its tab."""
+        filters = ChatFiltersSimulator()
+        self.assertEqual(filters.refresh_calls_membership([]), [])
+        self.assertEqual(
+            filters.ids_of_tabs()[1],
+            ChatFiltersSimulator.CALLS_FILTER_ID,
+        )
+
+    # --- Feature 59: Simulcast Quality-Tier Signalling on Pin/Unpin ---
+
+    def test_t1_f59_01_pin_signals_full_quality_tier(self):
+        """TEST-T1-F59-01: Pinning an endpoint requests the Full quality tier."""
+        sim = CallSimulator()
+        ep = sim.add_participant("ep_pin", 101, "Alice")
+        self.assertTrue(sim.pin_to_screen("ep_pin", screen_index=1))
+        self.assertEqual(ep.requested_quality, QUALITY_FULL)
+        self.assertEqual(ep.simulcast_spatial_layer, 2)
+        self.assertTrue(sim.is_pinned("ep_pin"))
+
+    def test_t1_f59_02_unpin_reverts_to_medium_tier(self):
+        """TEST-T1-F59-02: Unpinning reverts the endpoint to Medium instead of leaving Full."""
+        sim = CallSimulator()
+        ep = sim.add_participant("ep_pin", 101, "Alice")
+        sim.pin_to_screen("ep_pin", 1)
+        self.assertTrue(sim.unpin_from_screen("ep_pin", 1))
+        self.assertEqual(ep.requested_quality, QUALITY_MEDIUM)
+        self.assertEqual(ep.simulcast_spatial_layer, 1)
+        self.assertFalse(sim.is_pinned("ep_pin"))
+
+    def test_t1_f59_03_quality_request_is_idempotent(self):
+        """TEST-T1-F59-03: requestVideoQuality early-returns when the tier is unchanged."""
+        sim = CallSimulator()
+        sim.add_participant("ep", 101, "Alice")
+        self.assertTrue(sim.request_video_quality("ep", QUALITY_FULL))
+        self.assertFalse(sim.request_video_quality("ep", QUALITY_FULL))
+        self.assertFalse(sim.request_video_quality("missing", QUALITY_FULL))
+
+    def test_t1_f59_04_requested_channels_carry_min_and_max_tiers(self):
+        """TEST-T1-F59-04: Pinned camera exposes min=Thumbnail / max=Full to the SFU."""
+        sim = CallSimulator()
+        sim.add_participant("ep", 101, "Alice")
+        sim.pin_to_screen("ep", 1)
+        channels = sim.update_requested_video_channels()
+        self.assertEqual(len(channels), 1)
+        self.assertEqual(channels[0]["minQuality"], QUALITY_THUMBNAIL)
+        self.assertEqual(channels[0]["maxQuality"], QUALITY_FULL)
+        self.assertEqual(sim.on_stage_endpoints(), ["ep"])
+
+    def test_t1_f59_05_pinned_screencast_uses_full_min_tier(self):
+        """TEST-T1-F59-05: A pinned screen share is the only Full-minimum channel type."""
+        sim = CallSimulator()
+        sim.add_participant("screen", 101, "Alice", endpoint_type="Screen")
+        sim.pin_to_screen("screen", 1)
+        channels = sim.update_requested_video_channels()
+        self.assertEqual(channels[0]["minQuality"], QUALITY_FULL)
+        self.assertEqual(channels[0]["maxQuality"], QUALITY_FULL)
+
+    # --- Feature 60: Group Call Flag-Clear Ordering ---
+
+    def test_t1_f60_01_flags_cleared_before_notifying(self):
+        """TEST-T1-F60-01: Listeners observe the cleared flag during the GroupCall update."""
+        oracle = GroupCallFlagOracle()
+        observed = oracle.clear_group_call(notify_first=False)
+        self.assertFalse(observed)
+        self.assertEqual(oracle.notifications, 1)
+
+    def test_t1_f60_02_historical_order_leaves_stale_flag(self):
+        """TEST-T1-F60-02: Notifying before clearing exposes a stale "call still running" flag."""
+        oracle = GroupCallFlagOracle()
+        observed = oracle.clear_group_call(notify_first=True)
+        self.assertTrue(observed)
+
+    def test_t1_f60_03_terminal_state_is_consistent(self):
+        """TEST-T1-F60-03: After clearGroupCall both CallActive and CallNotEmpty are cleared."""
+        oracle = GroupCallFlagOracle()
+        oracle.clear_group_call(notify_first=False)
+        self.assertFalse(oracle.call_active)
+        self.assertFalse(oracle.call_not_empty)
+        self.assertFalse(oracle.has_active_call())
+
+    # --- Feature 61: Export Service Actions (Chat Wallpaper) ---
+
+    def test_t1_f61_01_json_carries_wallpaper_id(self):
+        """TEST-T1-F61-01: Exported JSON service action includes wallpaper_id."""
+        oracle = ExportActionOracle()
+        payload = oracle.wallpaper_json(paper_id=987654321)
+        self.assertEqual(payload["wallpaper_id"], 987654321)
+        self.assertEqual(payload["action"], "set_chat_wallpaper")
+
+    def test_t1_f61_02_json_same_wallpaper_variant_and_flag(self):
+        """TEST-T1-F61-02: "Same wallpaper" maps to set_same_chat_wallpaper and for_both."""
+        oracle = ExportActionOracle()
+        payload = oracle.wallpaper_json(paper_id=42, same=True, for_both=True)
+        self.assertEqual(payload["action"], "set_same_chat_wallpaper")
+        self.assertTrue(payload["for_both"])
+
+    def test_t1_f61_03_html_service_text_variants(self):
+        """TEST-T1-F61-03: HTML export renders distinct text for new vs same background."""
+        oracle = ExportActionOracle()
+        self.assertIn("new background", oracle.wallpaper_html(same=False))
+        self.assertIn("same background", oracle.wallpaper_html(same=True))
 
 
 if __name__ == "__main__":

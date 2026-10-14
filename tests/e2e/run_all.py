@@ -32,9 +32,11 @@ CATEGORY_MAP = {
     "Participant Sidebar & Search": ["f31", "f32", "f33", "f34"],
     "Audio / Microphone": ["f35", "f36", "f37"],
     "Main Menu & Navigation": ["f38", "f39"],
+    "Calls Folder": ["f38", "f58"],
     "UI Tweaks & Polish": ["f40", "f41", "f42", "f43", "f44"],
     "Context Menus & Cross-UI": ["f45", "f46", "f47", "f48"],
-    "Backend / Engine": ["f49", "f50", "f51", "f52", "f53", "f54"],
+    "Backend / Engine": ["f49", "f50", "f51", "f52", "f53", "f54", "f59", "f60"],
+    "Export Pipeline": ["f61"],
     "Build & Toolchain": ["f55", "f56", "f57"],
 }
 
@@ -131,6 +133,17 @@ def discover_suite(
             discovered = loader.discover(start_dir=t_dir, pattern="test_*.py", top_level_dir=REPO_ROOT)
             _extract_tests(discovered, all_tests)
 
+    # Tier 5 adversarial / stress coverage lives at the tests/e2e top level and
+    # has to be discovered separately from the per-tier directories.
+    if tier in ("5", "all"):
+        if os.path.exists(SCRIPT_DIR):
+            discovered = loader.discover(
+                start_dir=SCRIPT_DIR,
+                pattern="test_adversarial_*.py",
+                top_level_dir=REPO_ROOT,
+            )
+            _extract_tests(discovered, all_tests)
+
     # Filtering
     for test in all_tests:
         test_id = test.id().lower()
@@ -210,8 +223,8 @@ def export_junit(records: List[Dict[str, Any]], filepath: str, total_time: float
 
 
 def print_summary_table(records: List[Dict[str, Any]], total_time: float):
-    tier_counts = {"Tier 1 (Features)": 0, "Tier 2 (Boundaries)": 0, "Tier 3 (Combinations)": 0, "Tier 4 (Scenarios)": 0}
-    tier_pass = {"Tier 1 (Features)": 0, "Tier 2 (Boundaries)": 0, "Tier 3 (Combinations)": 0, "Tier 4 (Scenarios)": 0}
+    tier_counts = {"Tier 1 (Features)": 0, "Tier 2 (Boundaries)": 0, "Tier 3 (Combinations)": 0, "Tier 4 (Scenarios)": 0, "Tier 5 (Adversarial)": 0}
+    tier_pass = {"Tier 1 (Features)": 0, "Tier 2 (Boundaries)": 0, "Tier 3 (Combinations)": 0, "Tier 4 (Scenarios)": 0, "Tier 5 (Adversarial)": 0}
 
     for r in records:
         mod = r["module"]
@@ -223,6 +236,8 @@ def print_summary_table(records: List[Dict[str, Any]], total_time: float):
             t = "Tier 3 (Combinations)"
         elif "tier4" in mod:
             t = "Tier 4 (Scenarios)"
+        elif "adversarial" in mod:
+            t = "Tier 5 (Adversarial)"
         else:
             t = "Other"
 
@@ -256,7 +271,7 @@ def print_summary_table(records: List[Dict[str, Any]], total_time: float):
 
 def main():
     parser = argparse.ArgumentParser(description="Telegram Desktop Fork E2E Test Runner")
-    parser.add_argument("--tier", choices=["1", "2", "3", "4", "all"], default="all", help="Target test tier to run")
+    parser.add_argument("--tier", choices=["1", "2", "3", "4", "5", "all"], default="all", help="Target test tier to run")
     parser.add_argument("--feature", type=str, default=None, help="Filter tests by feature ID or name")
     parser.add_argument("--category", type=str, default=None, help="Filter tests by category name")
     parser.add_argument("--json", type=str, default=None, help="Path to export JSON results file")
