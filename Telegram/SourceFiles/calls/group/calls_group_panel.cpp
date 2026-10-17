@@ -1443,7 +1443,9 @@ void Panel::setupMembers() {
 
 	_displayCoordinator->pinnedRemoved(
 	) | rpl::on_next([=](const VideoEndpoint &endpoint) {
-		showInGrids(endpoint);
+		if (!_displayCoordinator->isPinnedOnAnyScreen(endpoint)) {
+			showInGrids(endpoint);
+		}
 		_call->requestVideoQuality(endpoint, VideoQuality::Medium);
 	}, _callLifetime);
 	_viewport->mouseInsideValue(
@@ -1732,8 +1734,10 @@ void Panel::pinToScreen(int screenIndex, const VideoEndpoint &endpoint) {
 void Panel::unpinFromScreen(int screenIndex, const VideoEndpoint &endpoint) {
 	if (_displayCoordinator) {
 		_displayCoordinator->unpinFromScreen(screenIndex, endpoint);
+		if (!_displayCoordinator->isPinnedOnAnyScreen(endpoint)) {
+			showInGrids(endpoint);
+		}
 	}
-	showInGrids(endpoint);
 }
 
 void Panel::hideFromGrids(

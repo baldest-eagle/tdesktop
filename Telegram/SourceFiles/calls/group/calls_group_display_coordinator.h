@@ -73,6 +73,7 @@ public:
 		bool self);
 	void unpinFromScreen(int screenIndex, const VideoEndpoint &endpoint);
 	[[nodiscard]] bool isPinnedOnScreen(int screenIndex, const VideoEndpoint &endpoint) const;
+	[[nodiscard]] bool isPinnedOnAnyScreen(const VideoEndpoint &endpoint) const;
 	[[nodiscard]] int pinnedCount(int screenIndex) const;
 	[[nodiscard]] std::vector<VideoEndpoint> pinnedEndpoints(int screenIndex) const;
 	[[nodiscard]] bool hasPinnedFeeds(int screenIndex) const;

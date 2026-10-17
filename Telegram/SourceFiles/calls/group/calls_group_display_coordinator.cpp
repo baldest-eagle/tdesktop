@@ -349,6 +349,25 @@ bool DisplayCoordinator::isPinnedOnScreen(int screenIndex, const VideoEndpoint &
 	return it->second.find(endpoint) != it->second.end();
 }
 
+bool DisplayCoordinator::isPinnedOnAnyScreen(const VideoEndpoint &endpoint) const {
+	if (endpoint.id.empty()) {
+		for (const auto &[_, endpoints] : _routedEndpoints) {
+			for (const auto &e : endpoints) {
+				if (e.peer == endpoint.peer && e.type == endpoint.type) {
+					return true;
+				}
+			}
+		}
+		return false;
+	}
+	for (const auto &[_, endpoints] : _routedEndpoints) {
+		if (endpoints.find(endpoint) != endpoints.end()) {
+			return true;
+		}
+	}
+	return false;
+}
+
 int DisplayCoordinator::pinnedCount(int screenIndex) const {
 	auto it = _routedEndpoints.find(screenIndex);
 	return (it != _routedEndpoints.end()) ? int(it->second.size()) : 0;
