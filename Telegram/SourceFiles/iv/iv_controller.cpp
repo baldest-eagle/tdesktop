@@ -196,6 +196,10 @@ void Controller::createWindow() {
 	}, _subtitle->lifetime());
 
 	_back = Ui::CreateChild<Ui::IconButton>(_subtitleWrap.get(), st::ivBack);
+	tr::lng_go_back(
+	) | rpl::start_with_next([=](const QString &text) {
+		_back->setAccessibleName(text);
+	}, _back->lifetime());
 	_back->setClickedCallback([=] {
 		if (_webview) {
 			_webview->eval("window.history.back();");
@@ -206,6 +210,10 @@ void Controller::createWindow() {
 	_forward = Ui::CreateChild<Ui::IconButton>(
 		_subtitleWrap.get(),
 		st::ivForward);
+	tr::lng_mediaview_forward(
+	) | rpl::start_with_next([=](const QString &text) {
+		_forward->setAccessibleName(text);
+	}, _forward->lifetime());
 	_forward->setClickedCallback([=] {
 		if (_webview) {
 			_webview->eval("window.history.forward();");
