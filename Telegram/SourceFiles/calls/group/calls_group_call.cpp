@@ -984,10 +984,18 @@ void GroupCall::subscribeToReal(not_null<Data::GroupCall*> real) {
 			real->participantsReloaded(
 			) | rpl::on_next([=] {
 				fillActiveVideoEndpoints();
+				_autoMutedPeers.clear();
+				scheduleDefaultLocalMute();
 			}, _lifetime);
 			fillActiveVideoEndpoints();
+			scheduleDefaultLocalMute();
 		}
 	});
+
+	real->participantUpdated(
+	) | rpl::on_next([=](const Data::GroupCall::ParticipantUpdate &) {
+		scheduleDefaultLocalMute();
+	}, _lifetime);
 
 	using Update = Data::GroupCall::ParticipantUpdate;
 	real->participantUpdated(
@@ -2167,6 +2175,49 @@ void GroupCall::applyParticipantLocally(
 					MTPGroupCallParticipantVideo(),
 					MTPlong())),
 			MTP_int(0)).c_updateGroupCallParticipants());
+}
+
+void GroupCall::scheduleDefaultLocalMute() {
+	if (_defaultLocalMuteScheduled) {
+		return;
+	}
+	_defaultLocalMuteScheduled = true;
+	crl::on_main(this, [=] {
+		_defaultLocalMuteScheduled = false;
+		applyDefaultLocalMute();
+	});
+}
+
+void GroupCall::applyDefaultLocalMute() {
+	const auto real = lookupReal();
+	if (!real || _rtmp || videoStream()) {
+		return;
+	}
+	for (const auto &participant : real->participants()) {
+		if (participant.peer != joinAs()) {
+			maybeApplyDefaultLocalMute(participant.peer);
+		}
+	}
+}
+
+bool GroupCall::maybeApplyDefaultLocalMute(
+		not_null<PeerData*> participantPeer) {
+	if (participantPeer == joinAs()
+		|| _manuallyUnmutedPeers.contains(participantPeer)
+		|| _autoMutedPeers.contains(participantPeer)) {
+		return false;
+	}
+	const auto participant = LookupParticipant(this, participantPeer);
+	if (!participant || !participant->ssrc) {
+		return false;
+	}
+	if (participant->mutedByMe) {
+		_autoMutedPeers.emplace(participantPeer);
+		return false;
+	}
+	_autoMutedPeers.emplace(participantPeer);
+	applyParticipantLocally(participantPeer, true, std::nullopt);
+	return true;
 }
 
 void GroupCall::hangup() {
@@ -3997,6 +4048,12 @@ void GroupCall::requestVideoQuality(
 }
 
 void GroupCall::toggleMute(const Group::MuteRequest &data) {
+	if (data.mute) {
+		_manuallyUnmutedPeers.remove(data.peer);
+	} else {
+		_manuallyUnmutedPeers.emplace(data.peer);
+		_autoMutedPeers.remove(data.peer);
+	}
 	if (_rtmp || videoStream()) {
 		_singleSourceVolume = data.mute ? 0 : Group::kDefaultVolume;
 		updateInstanceVolumes();
@@ -4008,6 +4065,8 @@ void GroupCall::toggleMute(const Group::MuteRequest &data) {
 }
 
 void GroupCall::changeVolume(const Group::VolumeRequest &data) {
+	_manuallyUnmutedPeers.emplace(data.peer);
+	_autoMutedPeers.remove(data.peer);
 	if (_rtmp || videoStream()) {
 		_singleSourceVolume = data.volume;
 		updateInstanceVolumes();

@@ -641,6 +641,9 @@ private:
 		not_null<PeerData*> participantPeer,
 		bool mute,
 		std::optional<int> volume);
+	void scheduleDefaultLocalMute();
+	void applyDefaultLocalMute();
+	bool maybeApplyDefaultLocalMute(not_null<PeerData*> participantPeer);
 	void applyQueuedSelfUpdates();
 	void sendPendingSelfUpdates();
 	void applySelfUpdate(const MTPDgroupCallParticipant &data);
@@ -777,6 +780,9 @@ private:
 		VideoEndpoint,
 		std::unique_ptr<VideoTrack>> _activeVideoTracks;
 	base::flat_set<VideoEndpoint> _shownVideoTracks;
+	base::flat_set<not_null<PeerData*>> _autoMutedPeers;
+	base::flat_set<not_null<PeerData*>> _manuallyUnmutedPeers;
+	bool _defaultLocalMuteScheduled = false;
 	rpl::variable<VideoEndpoint> _videoEndpointLarge;
 	rpl::variable<bool> _videoEndpointPinned = false;
 	crl::time _videoLargeTillTime = 0;
