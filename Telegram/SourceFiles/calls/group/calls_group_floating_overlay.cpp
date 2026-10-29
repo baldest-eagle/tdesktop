@@ -459,6 +459,20 @@ void FloatingOverlay::keyPressEvent(QKeyEvent *event) {
 	} else if (event->matches(QKeySequence::Find) || (event->key() == Qt::Key_F && (event->modifiers() & Qt::ControlModifier))) {
 		toggleSearch();
 		return;
+	} else if (event->key() == Qt::Key_G
+		&& (event->modifiers() & Qt::ControlModifier)
+		&& (event->modifiers() & Qt::ShiftModifier)) {
+		hide();
+		_panel->showAndActivate();
+		return;
+	} else if (event->key() == Qt::Key_V
+		&& (event->modifiers() & Qt::ControlModifier)
+		&& (event->modifiers() & Qt::ShiftModifier)) {
+		if (const auto call = _panel->call()) {
+			call->toggleVideo(!call->isSharingCamera());
+			update();
+		}
+		return;
 	} else if (_searchOpen) {
 		if (event->key() == Qt::Key_Backspace) {
 			if (!_searchQuery.isEmpty()) {

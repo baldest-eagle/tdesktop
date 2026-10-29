@@ -684,6 +684,16 @@ void Panel::initWindow() {
 					_floatingOverlay->toggle();
 				}
 				return base::EventFilterResult::Cancel;
+			} else if (keyEvent->key() == Qt::Key_G
+				&& (keyEvent->modifiers() & Qt::ControlModifier)
+				&& (keyEvent->modifiers() & Qt::ShiftModifier)) {
+				showAndActivate();
+				return base::EventFilterResult::Cancel;
+			} else if (keyEvent->key() == Qt::Key_V
+				&& (keyEvent->modifiers() & Qt::ControlModifier)
+				&& (keyEvent->modifiers() & Qt::ShiftModifier)) {
+				_call->toggleVideo(!_call->isSharingCamera());
+				return base::EventFilterResult::Cancel;
 			}
 		} else if (type == QEvent::WindowStateChange) {
 			updateFullScreen();
@@ -1447,6 +1457,14 @@ void Panel::setupMembers() {
 			showInGrids(endpoint);
 		}
 		_call->requestVideoQuality(endpoint, VideoQuality::Medium);
+	}, _callLifetime);
+	_displayCoordinator->panelForegroundRequests(
+	) | rpl::on_next([=] {
+		showAndActivate();
+	}, _callLifetime);
+	_displayCoordinator->cameraToggleRequests(
+	) | rpl::on_next([=] {
+		_call->toggleVideo(!_call->isSharingCamera());
 	}, _callLifetime);
 	_viewport->mouseInsideValue(
 	) | rpl::filter([=] {

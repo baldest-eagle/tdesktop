@@ -141,6 +141,22 @@ void DisplayCoordinator::createDisplayWindow(int displayIndex, QScreen *screen) 
 		destroyDisplayWindow(displayIndex);
 	});
 
+	const auto gridShortcut = new QShortcut(
+		QKeySequence(Qt::CTRL | Qt::SHIFT | Qt::Key_G),
+		display.widget.get());
+	gridShortcut->setContext(Qt::WindowShortcut);
+	QObject::connect(gridShortcut, &QShortcut::activated, [this] {
+		_panelForegroundRequested.fire({});
+	});
+
+	const auto cameraShortcut = new QShortcut(
+		QKeySequence(Qt::CTRL | Qt::SHIFT | Qt::Key_V),
+		display.widget.get());
+	cameraShortcut->setContext(Qt::WindowShortcut);
+	QObject::connect(cameraShortcut, &QShortcut::activated, [this] {
+		_cameraToggleRequested.fire({});
+	});
+
 	display.viewport->pinToggled(
 	) | rpl::on_next([this, displayIndex](const Viewport::PinToggle &toggle) {
 		if (!toggle.pinned) {
@@ -530,6 +546,14 @@ rpl::producer<Calls::VideoQualityRequest> DisplayCoordinator::qualityRequests() 
 
 rpl::producer<VideoEndpoint> DisplayCoordinator::pinnedRemoved() const {
 	return _pinnedRemoved.events();
+}
+
+rpl::producer<> DisplayCoordinator::panelForegroundRequests() const {
+	return _panelForegroundRequested.events();
+}
+
+rpl::producer<> DisplayCoordinator::cameraToggleRequests() const {
+	return _cameraToggleRequested.events();
 }
 
 QString DisplayRoleText(DisplayRole role) {

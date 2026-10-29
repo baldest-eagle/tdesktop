@@ -98,6 +98,8 @@ public:
 	[[nodiscard]] rpl::producer<int> displayCountChanged() const;
 	[[nodiscard]] rpl::producer<Calls::VideoQualityRequest> qualityRequests() const;
 	[[nodiscard]] rpl::producer<VideoEndpoint> pinnedRemoved() const;
+	[[nodiscard]] rpl::producer<> panelForegroundRequests() const;
+	[[nodiscard]] rpl::producer<> cameraToggleRequests() const;
 
 	bool hasTrack(int displayIndex, const VideoEndpoint &endpoint) const;
 	void removeVideoTrackFromAll(const VideoEndpoint &endpoint);
@@ -119,6 +121,8 @@ private:
 	rpl::event_stream<int> _displayCountChanged;
 	rpl::event_stream<Calls::VideoQualityRequest> _qualityRequests;
 	rpl::event_stream<VideoEndpoint> _pinnedRemoved;
+	rpl::event_stream<> _panelForegroundRequested;
+	rpl::event_stream<> _cameraToggleRequested;
 	rpl::lifetime _lifetime;
 
 	// Active speaker tracking
