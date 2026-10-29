@@ -85,6 +85,8 @@ private:
 
 	float _opacity = 0.92f;
 
+	bool _opaqueBg = false;
+
 	QShortcut *_toggleShortcut = nullptr;
 
 	object_ptr<HeaderButton> _closeBtn = { nullptr };

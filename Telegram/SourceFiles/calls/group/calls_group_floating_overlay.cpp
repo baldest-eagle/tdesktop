@@ -20,6 +20,8 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "chat_helpers/compose/compose_show.h"
 #include "window/window_session_controller.h"
 #include "main/main_session.h"
+#include "base/platform/base_platform_info.h"
+#include "ui/platform/ui_platform_utility.h"
 #include "ui/layers/show.h"
 #include "ui/abstract_button.h"
 #include "ui/widgets/buttons.h"
@@ -271,8 +273,13 @@ private:
 
 FloatingOverlay::FloatingOverlay(not_null<Panel*> panel)
 : QWidget(nullptr, Qt::Window | Qt::FramelessWindowHint | Qt::WindowStaysOnTopHint)
-, _panel(panel) {
-	setAttribute(Qt::WA_TranslucentBackground);
+, _panel(panel)
+, _opaqueBg(::Platform::IsWindows()) {
+	if (_opaqueBg) {
+		Ui::Platform::SetWindowCornerRounded(this);
+	} else {
+		setAttribute(Qt::WA_TranslucentBackground);
+	}
 	setAttribute(Qt::WA_ShowWithoutActivating);
 
 	const auto screen = QApplication::primaryScreen()->availableGeometry();
@@ -571,6 +578,10 @@ void FloatingOverlay::paintEvent(QPaintEvent *event) {
 	p.setRenderHint(QPainter::Antialiasing);
 
 	const auto fullRect = rect();
+
+	if (_opaqueBg) {
+		p.fillRect(fullRect, QColor(24, 26, 32));
+	}
 
 	p.setPen(QColor(255, 255, 255, 30));
 	p.setBrush(QColor(24, 26, 32, 245));
