@@ -7,6 +7,7 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 */
 #pragma once
 
+#include "base/weak_ptr.h"
 #include "boxes/peer_list_box.h"
 #include "calls/group/calls_group_common.h"
 
@@ -63,7 +64,9 @@ public:
 	virtual void rowShowContextMenu(not_null<PeerListRow*> row) = 0;
 };
 
-class MembersRow final : public PeerListRow {
+class MembersRow final
+	: public PeerListRow
+	, public base::has_weak_ptr {
 public:
 	MembersRow(
 		not_null<MembersRowDelegate*> delegate,

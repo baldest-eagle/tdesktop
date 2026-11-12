@@ -390,12 +390,6 @@ MessagesUi::MessagesUi(
 , _canManage(std::move(canManageValue))
 , _messageBg([] {
 	auto result = st::groupCallBg->c;
-	// [DEBUG-d1e7] temporary A/B instrumentation (revert before commit)
-	if (result.alphaF() < 0 || result.alphaF() > 1) {
-		LOG((
-			"[DEBUG-d1e7] messageBg input bad alpha %1"
-		).arg(QString::number(result.alphaF(), 'g', 10)));
-	}
 	result.setAlphaF(kMessageBgOpacity);
 	return result;
 })

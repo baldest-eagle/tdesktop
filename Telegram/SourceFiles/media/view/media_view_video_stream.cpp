@@ -11,6 +11,7 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "calls/group/calls_group_call.h"
 #include "calls/group/calls_group_common.h"
 #include "calls/group/calls_group_members.h"
+#include "calls/group/calls_group_members_row.h"
 #include "calls/group/calls_group_messages.h"
 #include "calls/group/calls_group_messages_ui.h"
 #include "calls/group/calls_group_viewport.h"

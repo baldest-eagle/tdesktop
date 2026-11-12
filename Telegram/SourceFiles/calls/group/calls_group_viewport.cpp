@@ -35,10 +35,6 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include <QOpenGLWidget>
 
 #include "styles/style_calls.h"
-// [DEBUG-d1e7] temporary A/B instrumentation (revert before commit)
-bool DebugD1e7CheckRow(const char *site, quintptr p);
-void DebugD1e7MarkRowDead(quintptr p);
-void DebugD1e7MarkRowAlive(quintptr p);
 
 namespace Calls::Group {
 namespace {
@@ -314,8 +310,6 @@ void Viewport::add(
 		rpl::producer<QSize> trackSize,
 		rpl::producer<bool> pinned,
 		bool self) {
-	DebugD1e7CheckRow("viewport-add", quintptr(track.row));
-	LOG(("[DEBUG-d1e7] Viewport %1 add row %2").arg(QString::number(quintptr(this), 16), QString::number(quintptr(track.row), 16)));
 	_tiles.push_back(std::make_unique<VideoTile>(
 		endpoint,
 		track,

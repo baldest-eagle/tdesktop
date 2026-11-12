@@ -9,6 +9,7 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 
 #include "calls/group/calls_group_viewport.h"
 #include "calls/group/calls_group_call.h"
+#include "calls/group/calls_group_members_row.h"
 #include "ui/effects/animations.h"
 
 class Painter;
@@ -38,7 +39,7 @@ public:
 		return _track.track;
 	}
 	[[nodiscard]] MembersRow *row() const {
-		return _track.row;
+		return _track.row.get();
 	}
 	[[nodiscard]] not_null<PeerData*> peer() const {
 		return _peer;

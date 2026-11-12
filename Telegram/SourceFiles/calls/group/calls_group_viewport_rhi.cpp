@@ -24,10 +24,6 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "styles/style_media_view.h"
 
 #include <rhi/qrhi.h>
-// [DEBUG-d1e7] temporary A/B instrumentation (revert before commit)
-bool DebugD1e7CheckRow(const char *site, quintptr p);
-void DebugD1e7MarkRowDead(quintptr p);
-void DebugD1e7MarkRowAlive(quintptr p);
 
 namespace Calls::Group {
 namespace {
@@ -1381,8 +1377,9 @@ void Viewport::RendererRhi::drawControls(
 	}
 
 	ensureButtonsImage();
-	DebugD1e7CheckRow("rhi-overlay", quintptr(row));
-	row->lazyInitialize(st::groupCallMembersListItem);
+	if (row) {
+		row->lazyInitialize(st::groupCallMembersListItem);
+	}
 
 	auto drawRasterOverlay = [&](
 			QRect rect,
@@ -1494,10 +1491,20 @@ void Viewport::RendererRhi::drawControls(
 			icon.height());
 		if (!muteRect.isEmpty()) {
 			drawRasterOverlay(muteRect, [&](Painter &p) {
-				row->paintMuteIcon(
-					p,
-					muteRect,
-					MembersRowStyle::Video);
+				if (row) {
+					row->paintMuteIcon(
+						p,
+						muteRect,
+						MembersRowStyle::Video);
+				} else {
+					const auto left = muteRect.x()
+						+ (muteRect.width()
+							- st::groupCallVideoCrossLine.icon.width()) / 2;
+					const auto top = muteRect.y()
+						+ (muteRect.height()
+							- st::groupCallVideoCrossLine.icon.height()) / 2;
+					_muteIcon.paint(p, left, top, 1.);
+				}
 			}, 1.f);
 		}
 
@@ -1513,12 +1520,20 @@ void Viewport::RendererRhi::drawControls(
 		if (!nameRect.isEmpty()) {
 			drawRasterOverlay(nameRect, [&](Painter &p) {
 				p.setPen(st::groupCallVideoTextFg);
-				row->name().drawLeftElided(
-					p,
-					nameRect.x(),
-					nameRect.y(),
-					nameRect.width(),
-					nameRect.x() + nameRect.width());
+				if (row) {
+					row->name().drawLeftElided(
+						p,
+						nameRect.x(),
+						nameRect.y(),
+						nameRect.width(),
+						nameRect.x() + nameRect.width());
+				} else {
+					p.setFont(st::semiboldFont);
+					p.drawText(
+						nameRect,
+						tile->peer()->name(),
+						style::al_top);
+				}
 			}, 1.f);
 		}
 	}
@@ -1717,9 +1732,6 @@ void Viewport::RendererRhi::validateDatas() {
 	auto pending = std::vector<int>();
 	for (auto i = 0; i != count; ++i) {
 		if (const auto row = tiles[i]->row()) {
-			if (!DebugD1e7CheckRow("rhi-tiles", quintptr(row))) {
-				continue;
-			}
 			row->lazyInitialize(st::groupCallMembersListItem);
 		}
 		const auto id = quintptr(tiles[i]->track().get());
@@ -1782,7 +1794,7 @@ void Viewport::RendererRhi::validateOutlineAnimation(
 		not_null<VideoTile*> tile,
 		TileData &data) {
 	const auto row = tile->row();
-	if (!row || !DebugD1e7CheckRow("rhi-outline", quintptr(row))) {
+	if (!row) {
 		return;
 	}
 	const auto peer = row->peer();
@@ -1827,7 +1839,7 @@ void Viewport::RendererRhi::validateUserpicFrame(
 	}
 	const auto size = tile->trackOrUserpicSize();
 	const auto row = tile->row();
-	if (!row || !DebugD1e7CheckRow("rhi-userpic", quintptr(row))) {
+	if (!row) {
 		data.userpicFrame = QImage();
 		return;
 	}

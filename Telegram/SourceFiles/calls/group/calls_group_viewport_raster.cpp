@@ -20,10 +20,6 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "lang/lang_keys.h"
 #include "styles/style_calls.h"
 #include "styles/palette.h"
-// [DEBUG-d1e7] temporary A/B instrumentation (revert before commit)
-bool DebugD1e7CheckRow(const char *site, quintptr p);
-void DebugD1e7MarkRowDead(quintptr p);
-void DebugD1e7MarkRowAlive(quintptr p);
 
 namespace Calls::Group {
 namespace {
@@ -326,7 +322,7 @@ void Viewport::RendererSW::paintTileControls(
 				shadowFill.height() * factor));
 	}
 	const auto row = tile->row();
-	if (row && DebugD1e7CheckRow("raster-tile", quintptr(row))) {
+	if (row) {
 		row->lazyInitialize(st::groupCallMembersListItem);
 	}
 

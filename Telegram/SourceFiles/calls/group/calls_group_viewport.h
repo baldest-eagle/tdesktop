@@ -7,6 +7,7 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 */
 #pragma once
 
+#include "base/weak_ptr.h"
 #include "calls/group/calls_group_call.h"
 #include "ui/effects/animations.h"
 #include "ui/rp_widget.h"
@@ -53,7 +54,7 @@ enum class VideoQuality;
 
 struct VideoTileTrack {
 	std::shared_ptr<Webrtc::VideoTrack> track;
-	MembersRow *row = nullptr;
+	base::weak_ptr<MembersRow> row;
 	not_null<PeerData*> peer;
 	rpl::variable<QSize> trackSize;
 

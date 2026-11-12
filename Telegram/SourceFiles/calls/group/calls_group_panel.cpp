@@ -10,6 +10,7 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "calls/group/calls_group_common.h"
 #include "calls/group/calls_group_invite_controller.h"
 #include "calls/group/calls_group_members.h"
+#include "calls/group/calls_group_members_row.h"
 #include "calls/group/calls_group_menu.h"
 #include "calls/group/calls_group_message_field.h"
 #include "calls/group/calls_group_messages.h"
@@ -515,12 +516,6 @@ Panel::Panel(not_null<GroupCall*> call, ConferencePanelMigration info)
 , _toasts(std::make_unique<Toasts>(this))
 , _controlsBackgroundColor([] {
 	auto result = st::groupCallBg->c;
-	// [DEBUG-d1e7] temporary A/B instrumentation (revert before commit)
-	if (result.alphaF() < 0 || result.alphaF() > 1) {
-		LOG((
-			"[DEBUG-d1e7] controlsBg input bad alpha %1"
-		).arg(QString::number(result.alphaF(), 'g', 10)));
-	}
 	result.setAlphaF(kControlsBackgroundOpacity);
 	return result;
 })
@@ -3663,13 +3658,6 @@ void Panel::refreshTitleColors() {
 		: std::nullopt);
 	if (_viewers) {
 		_viewers->setTextColorOverride(gray);
-		// [DEBUG-d1e7] temporary A/B instrumentation (revert before commit)
-		if (gray.alphaF() < 0 || gray.alphaF() > 1) {
-			LOG((
-				"[DEBUG-d1e7] panel gray bad alpha %1 (base %2)"
-			).arg(QString::number(gray.alphaF(), 'g', 10))
-			 .arg(QString::number(st::groupCallMemberNotJoinedStatus->c.alphaF(), 'g', 10)));
-		}
 		gray.setAlphaF(gray.alphaF() * 0.5);
 		_titleSeparator->setTextColorOverride(gray);
 	}

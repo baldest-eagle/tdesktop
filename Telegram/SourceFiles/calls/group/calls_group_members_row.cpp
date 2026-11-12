@@ -19,10 +19,6 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "lang/lang_keys.h"
 #include "webrtc/webrtc_video_track.h"
 #include "styles/style_calls.h"
-// [DEBUG-d1e7] temporary A/B instrumentation (revert before commit)
-bool DebugD1e7CheckRow(const char *site, quintptr p);
-void DebugD1e7MarkRowDead(quintptr p);
-void DebugD1e7MarkRowAlive(quintptr p);
 
 namespace Calls::Group {
 namespace {
@@ -132,13 +128,11 @@ MembersRow::MembersRow(
 	not_null<PeerData*> participantPeer)
 : PeerListRow(participantPeer)
 , _delegate(delegate) {
-	DebugD1e7MarkRowAlive(quintptr(this));
 	refreshStatus();
 	_about.setText(st::defaultTextStyle, participantPeer->about());
 }
 
 MembersRow::~MembersRow() {
-	DebugD1e7MarkRowDead(quintptr(this));
 }
 
 void MembersRow::setSkipLevelUpdate(bool value) {
@@ -827,23 +821,3 @@ void MembersRow::rightActionStopLastRipple() {
 }
 
 } // namespace Calls::Group
-
-// [DEBUG-d1e7] temporary A/B instrumentation (revert before commit)
-#include <unordered_set>
-namespace {
-std::unordered_set<quintptr> gD1e7Dead;
-} // namespace
-void DebugD1e7MarkRowDead(quintptr p) {
-	gD1e7Dead.insert(p);
-	LOG(("[DEBUG-d1e7] MembersRow dtor %1").arg(QString::number(p, 16)));
-}
-void DebugD1e7MarkRowAlive(quintptr p) {
-	gD1e7Dead.erase(p);
-}
-bool DebugD1e7CheckRow(const char *site, quintptr p) {
-	if (p && gD1e7Dead.contains(p)) {
-		LOG((QStringLiteral("USE-AFTER-FREE: site=%1 ptr=%2").arg(QLatin1String(site), QString::number(p, 16))));
-		return false;
-	}
-	return true;
-}
