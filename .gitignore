@@ -83,3 +83,6 @@ lang_auto_*
 .opencode/
 .worktrees/
 
+# Local crash backup scripts (machine-specific, not for version control)
+scripts/backup_tdesktop_crash.ps1
+
