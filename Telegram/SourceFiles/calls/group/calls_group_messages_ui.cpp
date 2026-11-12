@@ -390,6 +390,12 @@ MessagesUi::MessagesUi(
 , _canManage(std::move(canManageValue))
 , _messageBg([] {
 	auto result = st::groupCallBg->c;
+	// [DEBUG-d1e7] temporary A/B instrumentation (revert before commit)
+	if (result.alphaF() < 0 || result.alphaF() > 1) {
+		LOG((
+			"[DEBUG-d1e7] messageBg input bad alpha %1"
+		).arg(QString::number(result.alphaF(), 'g', 10)));
+	}
 	result.setAlphaF(kMessageBgOpacity);
 	return result;
 })
@@ -1947,6 +1953,16 @@ rpl::producer<MessageDeleteRequest> MessagesUi::deleteRequests() const {
 
 rpl::lifetime &MessagesUi::lifetime() {
 	return _lifetime;
+}
+
+[[nodiscard]] int MessagesUi::scrollPosition() const {
+	return _scroll ? _scroll->scrollTop() : 0;
+}
+
+void MessagesUi::scrollToPosition(int position) {
+	if (_scroll) {
+		_scroll->scrollToY(position);
+	}
 }
 
 } // namespace Calls::Group

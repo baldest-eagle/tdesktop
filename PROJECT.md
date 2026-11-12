@@ -79,7 +79,7 @@ The fork introduces custom enhancements across multiple subsystems:
 | M1 | Calls UI, Floating Overlay & Viewport Grid | Implement `setupChatContent` in `calls_group_floating_overlay.cpp`, fix 50/50 dynamic grid solver bug in `calls_group_viewport.cpp`, wire `lng_group_call_context_pin_to_grid` and `lng_group_call_open_chat` in `calls_group_members.cpp` | none | DONE (Gate: PASS, Auditor: CLEAN) |
 | M2 | Navigation & Calls Menu Integration | Wire `Calls::ShowCallsMenu` into `window_main_menu.cpp`, verify Wallet menu item with NEW badge, verify Ghost Mode read receipt suppression | none | DONE (Gate: PASS, Auditor: CLEAN) |
 | M3 | Engine & Performance Subsystems | Verify/finalize SQLite PRAGMA C1 tuning in storage initialization and WebRTC jitter buffer clamping A1 in `tgcalls` | none | DONE (Gate: PASS, Auditor: CLEAN) |
-| M4 | Code Style & Windows Native Debug Build | Verify code style conformance with `REVIEW.md`/`AGENTS.md` (no single-line comments, crl::guard, MTP::Sender), execute and verify Windows Native Debug compilation (`cmake --build out --config Debug --target Telegram`) | M1, M2, M3 | IN_PROGRESS |
+| M4 | Code Style & Windows Native Debug Build | Verify code style conformance with `REVIEW.md`/`AGENTS.md` (no single-line comments, crl::guard, MTP::Sender), execute and verify Windows Native Debug compilation (`cmake --build out --config Debug --target Telegram`) | M1, M2, M3 | DONE (Gate: PASS, style review CLEAN, Windows Debug build verified) |
 | M5 | Final Milestone: E2E Integration & Verification | Pass 100% E2E test suite (Tiers 1-4) and adversarial coverage hardening (Tier 5) | M4 | DONE (713/713 pass, incl. Tier 5 wired into `run_all.py`) |
 
 ## Interface Contracts

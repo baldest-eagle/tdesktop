@@ -118,6 +118,7 @@ private:
 	std::map<int, DisplayWindow> _displays;
 	std::map<int, std::set<VideoEndpoint>> _routedEndpoints;
 	std::set<int> _destroying;
+	bool _updating = false;
 	rpl::event_stream<int> _displayCountChanged;
 	rpl::event_stream<Calls::VideoQualityRequest> _qualityRequests;
 	rpl::event_stream<VideoEndpoint> _pinnedRemoved;

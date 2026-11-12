@@ -24,6 +24,10 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "styles/style_media_view.h"
 
 #include <rhi/qrhi.h>
+// [DEBUG-d1e7] temporary A/B instrumentation (revert before commit)
+bool DebugD1e7CheckRow(const char *site, quintptr p);
+void DebugD1e7MarkRowDead(quintptr p);
+void DebugD1e7MarkRowAlive(quintptr p);
 
 namespace Calls::Group {
 namespace {
@@ -1377,6 +1381,7 @@ void Viewport::RendererRhi::drawControls(
 	}
 
 	ensureButtonsImage();
+	DebugD1e7CheckRow("rhi-overlay", quintptr(row));
 	row->lazyInitialize(st::groupCallMembersListItem);
 
 	auto drawRasterOverlay = [&](
@@ -1711,7 +1716,12 @@ void Viewport::RendererRhi::validateDatas() {
 	_tileDataIndices.resize(count);
 	auto pending = std::vector<int>();
 	for (auto i = 0; i != count; ++i) {
-		tiles[i]->row()->lazyInitialize(st::groupCallMembersListItem);
+		if (const auto row = tiles[i]->row()) {
+			if (!DebugD1e7CheckRow("rhi-tiles", quintptr(row))) {
+				continue;
+			}
+			row->lazyInitialize(st::groupCallMembersListItem);
+		}
 		const auto id = quintptr(tiles[i]->track().get());
 		const auto j = ranges::find(_tileData, id, &TileData::id);
 		if (j != end(_tileData)) {
@@ -1771,7 +1781,11 @@ void Viewport::RendererRhi::validateDatas() {
 void Viewport::RendererRhi::validateOutlineAnimation(
 		not_null<VideoTile*> tile,
 		TileData &data) {
-	const auto peer = tile->row()->peer();
+	const auto row = tile->row();
+	if (!row || !DebugD1e7CheckRow("rhi-outline", quintptr(row))) {
+		return;
+	}
+	const auto peer = row->peer();
 	const auto history = peer->owner().historyLoaded(peer);
 	const auto outline = history && (history->unreadCount() > 0 || history->unreadMark());
 	if (data.outline == outline) {
@@ -1812,9 +1826,14 @@ void Viewport::RendererRhi::validateUserpicFrame(
 		return;
 	}
 	const auto size = tile->trackOrUserpicSize();
+	const auto row = tile->row();
+	if (!row || !DebugD1e7CheckRow("rhi-userpic", quintptr(row))) {
+		data.userpicFrame = QImage();
+		return;
+	}
 	data.userpicFrame = PeerData::GenerateUserpicImage(
 		tile->peer(),
-		tile->row()->ensureUserpicView(),
+		row->ensureUserpicView(),
 		size.width(),
 		0);
 }

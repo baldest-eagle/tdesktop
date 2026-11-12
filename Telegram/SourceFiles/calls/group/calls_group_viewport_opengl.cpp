@@ -22,6 +22,10 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "styles/style_media_view.h"
 
 #include <QOpenGLShader>
+// [DEBUG-d1e7] temporary A/B instrumentation (revert before commit)
+bool DebugD1e7CheckRow(const char *site, quintptr p);
+void DebugD1e7MarkRowDead(quintptr p);
+void DebugD1e7MarkRowAlive(quintptr p);
 
 namespace Calls::Group {
 namespace {
@@ -1226,10 +1230,17 @@ void Viewport::RendererGL::validateDatas() {
 			const auto peer = tiles[i]->peer();
 			return std::clamp(peer->name().size(), 1, hasWidth) * factor;
 		}
+		if (!DebugD1e7CheckRow("gl-namewidth", quintptr(row))) {
+			return 0;
+		}
 		return std::clamp(row->name().maxWidth(), 1, hasWidth) * factor;
 	};
 	for (auto i = 0; i != count; ++i) {
 		if (const auto row = tiles[i]->row()) {
+			if (!DebugD1e7CheckRow("gl-tiles", quintptr(row))) {
+				continue;
+			}
+			DebugD1e7CheckRow("gl-tiles", quintptr(row));
 			row->lazyInitialize(st::groupCallMembersListItem);
 		}
 		const auto width = nameWidth(i);

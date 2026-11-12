@@ -317,9 +317,15 @@ void FloatingOverlay::closeEvent(QCloseEvent *event) {
 
 void FloatingOverlay::toggle() {
 	if (!isHidden()) {
+		if (_messagesUi) {
+			_savedScrollTop = _messagesUi->scrollPosition();
+		}
 		hide();
 	} else {
 		show();
+		if (_messagesUi) {
+			_messagesUi->scrollToPosition(_savedScrollTop);
+		}
 	}
 }
 

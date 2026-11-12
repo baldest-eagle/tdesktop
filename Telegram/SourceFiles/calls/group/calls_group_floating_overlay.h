@@ -102,6 +102,7 @@ private:
 	rpl::lifetime _tabLifetime;
 
 	bool _searchOpen = false;
+	int _savedScrollTop = 0;
 	QString _searchQuery;
 	std::vector<SearchResult> _searchResults;
 

@@ -71,6 +71,10 @@ public:
 
 	[[nodiscard]] rpl::lifetime &lifetime();
 
+[[nodiscard]] int scrollPosition() const;
+
+void scrollToPosition(int position);
+
 private:
 	struct MessageView;
 	struct PinnedView;

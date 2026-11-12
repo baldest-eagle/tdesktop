@@ -398,55 +398,12 @@ bool Messages::skipMessage(const TextWithEntities &text, int stars) const {
 }
 
 void Messages::checkDestroying(bool afterChanges) {
-	auto next = TimeId();
-	const auto now = base::unixtime::now();
-	const auto initial = int(_messages.size());
-	if (_call->videoStream()) {
-		if (initial > kMaxShownVideoStreamMessages) {
-			const auto remove = initial - kMaxShownVideoStreamMessages;
-			auto i = begin(_messages);
-			for (auto k = 0; k != remove; ++k) {
-				if (i->date && i->pinFinishDate <= now) {
-					i = _messages.erase(i);
-				} else if (!next || next > i->pinFinishDate - now) {
-					next = i->pinFinishDate - now;
-					++i;
-				} else {
-					++i;
-				}
-			}
-		}
-	} else for (auto i = begin(_messages); i != end(_messages);) {
-		const auto date = i->date;
-		//const auto ttl = i->stars
-		//	? (Ui::StarsColoringForCount(i->stars).minutesPin * 60)
-		//	: _ttl;
-		const auto ttl = _ttl;
-		if (!date) {
-			if (i->id < 0) {
-				++i;
-			} else {
-				i = _messages.erase(i);
-			}
-		} else if (date + ttl <= now) {
-			i = _messages.erase(i);
-		} else if (!next || next > date + ttl - now) {
-			next = date + ttl - now;
-			++i;
-		} else {
-			++i;
-		}
-	}
-	if (!next) {
-		_destroyTimer.cancel();
-	} else {
-		const auto delay = next * crl::time(1000);
-		if (!_destroyTimer.isActive()
-			|| (_destroyTimer.remainingTime() > delay)) {
-			_destroyTimer.callOnce(delay);
-		}
-	}
-	if (afterChanges || (_messages.size() < initial)) {
+	// Chat log lifetime is bound to the call session.
+	// The log persists for the entire duration of the group call
+	// and is cleared only when the user leaves the call or the call terminates.
+	// Toggling the overlay open/closed with Ctrl+Shift+T must not clear the log.
+	// This function is a no-op to prevent any TTL-based message expiry.
+	if (afterChanges) {
 		pushChanges();
 	}
 }

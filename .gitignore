@@ -79,3 +79,7 @@ __pycache__/
 lang_auto.*
 lang_auto_*
 
+# Local agent & tooling directories
+.opencode/
+.worktrees/
+

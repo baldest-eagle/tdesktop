@@ -61,6 +61,12 @@ DisplayCoordinator::DisplayCoordinator(
 DisplayCoordinator::~DisplayCoordinator() = default;
 
 void DisplayCoordinator::updateScreens() {
+	if (_updating) {
+		return;
+	}
+	const auto guard = gsl::finally([&] { _updating = false; });
+	_updating = true;
+
 	const auto app = qobject_cast<QGuiApplication*>(QGuiApplication::instance());
 	if (!app) {
 		return;
