@@ -495,18 +495,19 @@ Panel::Panel(not_null<GroupCall*> call, ConferencePanelMigration info)
 , _stickedTooltipsShown(Core::App().settings().hiddenGroupCallTooltips()
 	| StickedTooltip::Microphone)  // Permanent listen-only: suppress mic tooltip
 , _messages(std::make_unique<MessagesUi>(
-	widget(),
-	uiShow(),
-	MessagesMode::GroupCall,
-	_call->messages()->listValue(),
-	nullptr,
-	_call->messages()->idUpdates(),
-	_call->canManageValue(),
-	_call->messagesEnabledValue(),
-	[=](QPoint globalPosition) {
-		return _messageField
-			&& _messageField->ownsReactionPanelInput(globalPosition);
-	}))
+		widget(),
+		uiShow(),
+		MessagesMode::GroupCall,
+		uiShow()->session().appConfig().groupCallMessageTTL(),
+		_call->messages()->listValue(),
+		nullptr,
+		_call->messages()->idUpdates(),
+		_call->canManageValue(),
+		_call->messagesEnabledValue(),
+		[=](QPoint globalPosition) {
+			return _messageField
+				&& _messageField->ownsReactionPanelInput(globalPosition);
+		}))
 , _displayCoordinator(std::make_unique<DisplayCoordinator>(
 	widget(),
 	_window->backend(),
@@ -845,10 +846,15 @@ void Panel::toggleChatPanel() {
 
 		// Create messages UI parented to the chat panel
 		if (!_panelMessages) {
+			// FORK_FEATURE: on_screen_chat_expiry
+			// The toggle-able overlay (Ctrl+Shift+T) keeps the FULL log until the
+			// call ends. expireShown == 0 disables the view-level TTL filter, so
+			// messages that have aged off the on-screen chat are still shown here.
 			_panelMessages = std::make_unique<MessagesUi>(
 				_chatPanel,
 				uiShow(),
 				MessagesMode::GroupCall,
+				0, // no expiry: full log until call end
 				_call->messages()->listValue(),
 				nullptr,
 				_call->messages()->idUpdates(),

@@ -234,6 +234,7 @@ VideoStream::VideoStream(
 		parent,
 		_show,
 		Calls::Group::MessagesMode::VideoStream,
+		0, // video stream chat: no view-level TTL expiry
 		_call->messages()->listValue(),
 		TopDonorPlaces(_call.get()),
 		_call->messages()->idUpdates(),

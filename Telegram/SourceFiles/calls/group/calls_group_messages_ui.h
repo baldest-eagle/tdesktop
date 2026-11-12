@@ -8,6 +8,7 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #pragma once
 
 #include "base/unique_qptr.h"
+#include "base/timer.h"
 #include "ui/effects/animations.h"
 #include "ui/text/custom_emoji_helper.h"
 #include "ui/round_rect.h"
@@ -51,29 +52,39 @@ enum class MessagesMode {
 class MessagesUi final {
 public:
 	MessagesUi(
-		not_null<QWidget*> parent,
-		std::shared_ptr<ChatHelpers::Show> show,
-		MessagesMode mode,
-		rpl::producer<std::vector<Message>> messages,
-		rpl::producer<std::vector<not_null<PeerData*>>> topDonorsValue,
-		rpl::producer<MessageIdUpdate> idUpdates,
-		rpl::producer<bool> canManageValue,
-		rpl::producer<bool> shown,
-		Fn<bool(QPoint)> inputReserved = nullptr);
-	~MessagesUi();
+			not_null<QWidget*> parent,
+			std::shared_ptr<ChatHelpers::Show> show,
+			MessagesMode mode,
+			TimeId expireShown,
+			rpl::producer<std::vector<Message>> messages,
+			rpl::producer<std::vector<not_null<PeerData*>>> topDonorsValue,
+			rpl::producer<MessageIdUpdate> idUpdates,
+			rpl::producer<bool> canManageValue,
+			rpl::producer<bool> shown,
+			Fn<bool(QPoint)> inputReserved = nullptr);
+		~MessagesUi();
 
-	void move(int left, int bottom, int width, int availableHeight);
-	void raise();
-	void setVisible(bool visible);
+		void move(int left, int bottom, int width, int availableHeight);
+		void raise();
+		void setVisible(bool visible);
 
-	[[nodiscard]] rpl::producer<> hiddenShowRequested() const;
-	[[nodiscard]] rpl::producer<MessageDeleteRequest> deleteRequests() const;
+		[[nodiscard]] rpl::producer<> hiddenShowRequested() const;
+		[[nodiscard]] rpl::producer<MessageDeleteRequest> deleteRequests() const;
 
-	[[nodiscard]] rpl::lifetime &lifetime();
+		[[nodiscard]] rpl::lifetime &lifetime();
 
-[[nodiscard]] int scrollPosition() const;
+		[[nodiscard]] int scrollPosition() const;
 
-void scrollToPosition(int position);
+		void scrollToPosition(int position);
+
+		// FORK_FEATURE: on_screen_chat_expiry
+		// The group call chat log lives in a single Messages object owned by
+		// GroupCall, shared by the always-visible on-screen chat and the
+		// Ctrl+Shift+T toggle-able overlay. The overlay must retain the full
+		// log until the call ends; the on-screen chat must still age out so
+		// messages don't permanently cover camera feeds. This is enforced at
+		// the view level (see setupList) so the shared store is never touched.
+		void expireShown();
 
 private:
 	struct MessageView;
@@ -146,10 +157,12 @@ private:
 		int place);
 
 	const not_null<QWidget*> _parent;
-	const std::shared_ptr<ChatHelpers::Show> _show;
-	const MessagesMode _mode;
-	const Fn<bool(QPoint)> _inputReserved;
-	std::unique_ptr<Ui::ElasticScroll> _scroll;
+		const std::shared_ptr<ChatHelpers::Show> _show;
+		const MessagesMode _mode;
+		const TimeId _expireShown;
+		base::Timer _expireTimer;
+		const Fn<bool(QPoint)> _inputReserved;
+		std::unique_ptr<Ui::ElasticScroll> _scroll;
 	Ui::Animations::Simple _scrollToAnimation;
 	Ui::RpWidget *_messages = nullptr;
 	QImage _canvas;

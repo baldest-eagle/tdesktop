@@ -797,6 +797,7 @@ void FloatingOverlay::setupChatContent() {
 			this,
 			_panel->uiShow(),
 			MessagesMode::GroupCall,
+			0, // overlay: full log until call end
 			call->messages()->listValue(),
 			nullptr,
 			call->messages()->idUpdates(),
@@ -855,6 +856,7 @@ void FloatingOverlay::setupChatContent() {
 			this,
 			_panel->uiShow(),
 			MessagesMode::GroupCall,
+			0, // overlay: full log until call end
 			messagesStream->events_starting_with(getMessages()),
 			nullptr,
 			rpl::never<MessageIdUpdate>(),

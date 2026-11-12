@@ -374,18 +374,21 @@ MessagesUi::PayedBg::PayedBg(const Ui::StarsColoring &coloring)
 }
 
 MessagesUi::MessagesUi(
-	not_null<QWidget*> parent,
-	std::shared_ptr<ChatHelpers::Show> show,
-	MessagesMode mode,
-	rpl::producer<std::vector<Message>> messages,
-	rpl::producer<std::vector<not_null<PeerData*>>> topDonorsValue,
-	rpl::producer<MessageIdUpdate> idUpdates,
-	rpl::producer<bool> canManageValue,
-	rpl::producer<bool> shown,
-	Fn<bool(QPoint)> inputReserved)
+		not_null<QWidget*> parent,
+		std::shared_ptr<ChatHelpers::Show> show,
+		MessagesMode mode,
+		TimeId expireShown,
+		rpl::producer<std::vector<Message>> messages,
+		rpl::producer<std::vector<not_null<PeerData*>>> topDonorsValue,
+		rpl::producer<MessageIdUpdate> idUpdates,
+		rpl::producer<bool> canManageValue,
+		rpl::producer<bool> shown,
+		Fn<bool(QPoint)> inputReserved)
 : _parent(parent)
 , _show(std::move(show))
 , _mode(mode)
+, _expireShown(expireShown)
+, _expireTimer([this] { this->expireShown(); })
 , _inputReserved(std::move(inputReserved))
 , _canManage(std::move(canManageValue))
 , _messageBg([] {
@@ -399,10 +402,20 @@ MessagesUi::MessagesUi(
 , _fadeHeight(st::normalFont->height * 2)
 , _fadeWidth(st::normalFont->height * 2)
 , _streamMode(_mode == MessagesMode::VideoStream) {
-	setupBadges();
-	setupList(std::move(messages), std::move(shown));
-	handleIdUpdates(std::move(idUpdates));
-}
+		setupBadges();
+		setupList(std::move(messages), std::move(shown));
+		handleIdUpdates(std::move(idUpdates));
+		// FORK_FEATURE: on_screen_chat_expiry
+		// Drive view-level TTL expiry even when the chat is quiet. The
+		// original checkDestroying() self-scheduled off _destroyTimer the
+		// same way; this replaces that for the on-screen view only.
+		// base::Timer is an interval timer that auto-reschedules and fires
+		// _callback on every tick, so a single callEach() keeps expiring
+		// until the view is destroyed or the overlay takes over.
+		if (_expireShown) {
+			_expireTimer.callEach(crl::time(1000));
+		}
+	}
 
 MessagesUi::~MessagesUi() = default;
 
@@ -454,6 +467,18 @@ void MessagesUi::setupList(
 			_hidden = std::nullopt;
 		} else {
 			_hidden = base::take(list);
+		}
+		// FORK_FEATURE: on_screen_chat_expiry
+		// The shared Messages store retains everything for the overlay.
+		// The on-screen chat is a view over the same store, so it filters
+		// out expired messages here rather than deleting them. The overlay
+		// (expireShown == 0) renders the full log until the call ends.
+		if (_expireShown) {
+			const auto now = base::unixtime::now();
+			list.erase(std::remove_if(list.begin(), list.end(),
+				[=](const Message &m) {
+					return m.date && (m.date + _expireShown <= now);
+				}), list.end());
 		}
 		showList(list);
 	}, _lifetime);
@@ -1956,6 +1981,25 @@ rpl::lifetime &MessagesUi::lifetime() {
 void MessagesUi::scrollToPosition(int position) {
 	if (_scroll) {
 		_scroll->scrollToY(position);
+	}
+}
+
+// FORK_FEATURE: on_screen_chat_expiry
+// Re-render the on-screen chat after its TTL has elapsed. The shared
+// Messages store is untouched; only this view drops expired rows. The
+// overlay (which never calls this) keeps the full log until call end.
+void MessagesUi::expireShown() {
+	if (!_expireShown || _hidden) {
+		return;
+	}
+	const auto now = base::unixtime::now();
+	for (auto i = begin(_views); i != end(_views);) {
+		if (i->removed || !i->date || (i->date + _expireShown > now)) {
+			++i;
+			continue;
+		}
+		toggleMessage(*i, false);
+		i = _views.erase(i);
 	}
 }
 
