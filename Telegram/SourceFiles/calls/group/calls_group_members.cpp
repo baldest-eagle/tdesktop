@@ -2158,7 +2158,7 @@ void Members::setupList() {
 
 	const auto searchField = Ui::CreateChild<Ui::InputField>(
 		searchWrap,
-		st::defaultInputField,
+		st::groupCallField,
 		rpl::single(u"Search username..."_q));
 	searchWrap->sizeValue(
 	) | rpl::on_next([=](QSize size) {
